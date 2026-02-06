@@ -1,6 +1,6 @@
 from django.urls import path,include
 from . import views
 urlpatterns = [
-    path("AdminPanel/",views.AdminPanel),
+    path("add_routes/",views.AddRoutes),
 
 ]

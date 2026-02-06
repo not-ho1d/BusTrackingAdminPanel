@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +109,35 @@
         .add-route-btn:active {
             background: #eaeaea;
         }
+
+        .route-names:hover{
+            color: #0827d6;
+        }
+
+        .route-names:active{
+            color: #fd0b0b;
+        }
+
+        .alert{
+            position: fixed;
+            background: #187c42;
+            color: white;
+            padding: 8px 50px;
+            right: 40%;
+            top: 1px;
+            border-radius: 2px;
+            transition: opacity 0.6s ease;
+            display: hidden;
+        }
+        .hidden{
+            opacity: 0;
+        }
+        .option-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
     </style>
 </head>
 <body>
@@ -118,7 +149,9 @@
         <a href="#">Add Buses</a>
     </div>
 </div>
-
+<div class="alert hidden" id="alert">
+    <Label>Saved Route</Label>
+</div>
 <div class="container">
     <div class="map-section">
         <div id="map"></div>
@@ -129,7 +162,17 @@
             <label for="routeName">Route Name</label>
             <input type="text" id="routeName" placeholder="Enter route name">
         </div>
-        <button class="add-route-btn" id="add-route-btn">Add Route</button>
+        <div class="option-div">
+            <button class="add-route-btn" id="add-route-btn">Save</button>
+            <button class="add-route-btn" id="clear-route-btn"><img src="{% static 'AdminPanel/assets/eraser-svgrepo-com.svg' %}" width="20" height="12"></button>
+            <button class="add-route-btn" id="delete-route-btn"><img src="{% static 'AdminPanel/assets/trash-bin.svg' %}" width="20" height="12"></button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
+            <label>View Routes</label>
+            {% for r in routes %}
+            <a class="route-names" data-route_name="{{r.route_name}}" data-route="{{r.route_data}}">{{ r.route_name }}</a>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -138,6 +181,9 @@
 
 <script>
     const addRouteButton = document.getElementById("add-route-btn");
+    const clearRouteButton = document.getElementById("clear-route-btn");
+    const deleteRouteButton = document.getElementById("delete-route-btn");
+    
     const map = L.map('map').setView([11.7590518, 76.0047251], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     
@@ -184,18 +230,60 @@
         }));
 
 
-        fetch("/AdminPanel/",{
+        fetch("/add_routes/",{
             method:"POST",
             headers:{
                 "Content-Type": "application/json",
                 "X-CSRFToken":csrftoken
             },
             body: JSON.stringify({
+                action:"add",
                 route_name:routeName,
                 way_points:plainPoints
             })
         });
+
+        /*const alertDiv = document.getElementById("alert");
+        alertDiv.classList.remove("hidden");
+        setTimeout(() => {
+            alertDiv.classList.add("hidden");
+        }, 900);*/
+        location.reload()
     })
+
+    clearRouteButton.addEventListener("click",(e)=>{
+        clickedPoints.length = 0;
+        routingControl.setWaypoints(clickedPoints);
+    })
+
+    deleteRouteButton.addEventListener("click",()=>{
+        const routeNameInp = document.getElementById("routeName");
+        const routeName = routeNameInp.value;
+
+        fetch("/add_routes/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"delete",
+                route_name:routeName
+            })
+        });
+
+        location.reload();
+    })
+    document.querySelectorAll(".route-names").forEach(el => {
+        el.addEventListener("click",(e)=>{
+            const route = JSON.parse(el.dataset.route);
+            clickedPoints = route;
+            routingControl.setWaypoints(clickedPoints);
+
+            const routeNameInp = document.getElementById("routeName");
+            routeNameInp.value = el.dataset.route_name;
+        })
+    });
 </script>
 
 </body>
