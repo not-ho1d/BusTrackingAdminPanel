@@ -1,0 +1,280 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AdminPanel</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #222;
+        }
+
+        .navbar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fff;
+        }
+
+        .nav-left {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-right a {
+            margin-left: 24px;
+            text-decoration: none;
+            font-size: 14px;
+            color: #444;
+        }
+
+        #curr_page {
+            color: #c92828;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100% - 56px);
+        }
+
+        .map-section {
+            width: 70%;
+        }
+
+        .side-section {
+            width: 30%;
+            background: #f7f7f7;
+            border-left: 1px solid #e5e5e5;
+            padding: 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .field input {
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            outline: none;
+            background: #fff;
+        }
+
+        .field input:focus {
+            border-color: #999;
+        }
+
+        .add-route-btn {
+            align-self: flex-start;
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #fff;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-route-btn:hover {
+            background: #f2f2f2;
+        }
+
+        .add-route-btn:active {
+            background: #eaeaea;
+        }
+
+        .route-names:hover{
+            color: #0827d6;
+        }
+
+        .route-names:active{
+            color: #fd0b0b;
+        }
+
+        .alert{
+            position: fixed;
+            background: #187c42;
+            color: white;
+            padding: 8px 50px;
+            right: 40%;
+            top: 1px;
+            border-radius: 2px;
+            transition: opacity 0.6s ease;
+            display: hidden;
+        }
+        .hidden{
+            opacity: 0;
+        }
+        .option-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
+        .move-bw-stands-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="nav-left">AdminPanel</div>
+    <div class="nav-right">
+        <a href="{% url 'add_routes' %}">Add Routes</a>
+        <a href="#">Add Buses</a>
+        <a href="{% url 'edit_stops' %}" id="curr_page">Edit Stops</a>
+    </div>
+</div>
+<div class="alert hidden" id="alert">
+    <Label>Saved Route</Label>
+</div>
+<div class="container">
+    <div class="map-section">
+        <div id="map"></div>
+    </div>
+
+    <div class="side-section">
+        <div class="field">
+            <label for="routeName">Route Name</label>
+            <input type="text" id="routeName" placeholder="Enter route name">
+        </div>
+        <div class="option-div">
+            <button class="add-route-btn" id="save-btn">Save</button>
+            <button class="add-route-btn" id="clear-btn"><img src="{% static 'AdminPanel/assets/eraser-svgrepo-com.svg' %}" width="20" height="12"></button>
+            <button class="add-route-btn" id="search-btn"><img src="{% static 'AdminPanel/assets/search.svg' %}" width="20" height="12"></button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
+            <label id="no-matching-route-err" style="display: none;color: #c92828;">Route Does Not Exist</label>
+        </div>
+        <div id="stand-editor" class="field" style="display: none ; flex-direction: column; gap: 10px;user-select: none;">
+            <label style="color: #d3d1d1;text-align: center;">--------------------------------</label>
+            <label>Stop Name</label>
+            <input type="text" placeholder="Enter stop name">
+            <label>Time to reach from previous stop</label>
+            <input type="number" placeholder="Enter Time in minutes">
+            <div class="move-bw-stands-div" id="move-bw-stands-div">
+                <div>
+                    <button class="add-route-btn" id="right"><img src="{% static 'AdminPanel/assets/left.svg' %}" width="20" height="12"></button>
+                    <button class="add-route-btn" id="right"><img src="{% static 'AdminPanel/assets/right.svg' %}" width="20" height="12"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const BUS_ICON_URL = "{% static 'AdminPanel/assets/bus-stop-pointer.svg' %}";
+    const saveButton = document.getElementById("save-btn");
+    const clearButton = document.getElementById("clear-btn");
+    const searchButton = document.getElementById("search-btn");
+    const routeNameInp = document.getElementById("routeName");
+    const csrftoken = document.querySelector(
+        'meta[name="csrf-token"]'
+    ).content;
+    const busIcon = L.icon({
+        iconUrl:BUS_ICON_URL,
+        iconSize:[22,22],
+        iconAnchor:[11,22],
+        popupAnchor:[0,-22]
+    })
+    var busStops = [];
+
+    const map = L.map('map').setView([11.7590518, 76.0047251], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const routingControl = L.Routing.control({
+        waypoints: [],
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+
+        createMarker: function(i,wp,n){
+            const marker = L.marker(wp.latLng,{icon:busIcon});
+            const waypoints = routingControl.getWaypoints();
+            marker.on('click',e=>{
+                const index = waypoints.findIndex(w =>
+                    w.latLng && w.latLng.equals(wp.latLng)
+                );
+            })
+            return marker;
+        }
+    }).addTo(map);
+
+    searchButton.addEventListener("click",()=>{
+        const routeName = routeNameInp.value;
+        fetch("/edit_stops/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"search_route",
+                route_name:routeName,
+            })
+        }).then(res=> res.json())
+        .then(data=>{
+            const errLabel = document.getElementById("no-matching-route-err");
+            const standEditor = document.getElementById("stand-editor");
+            if(data.search_success){
+                errLabel.style.display="none";
+                const bus_stops_data = JSON.parse(data.bus_stops);
+                routingControl.setWaypoints(bus_stops_data);
+                bus_stops_data.forEach(bs => {
+                    stopDetails = {
+                        "name":"",
+                        "lat":bs.lat,
+                        "lng":bs.lng,
+                        "tfps":0
+                    }
+                    busStops.push(stopDetails);
+                });
+                standEditor.style.display="flex";
+
+            }else{
+                errLabel.style.display="block";
+                standEditor.style.display="none";
+            }
+        })
+    })
+    
+    
+</script>
+
+</body>
+</html>

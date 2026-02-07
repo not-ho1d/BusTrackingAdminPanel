@@ -23,6 +23,7 @@ def AddRoutes(request):
 
         if action == "add":
             wayPoints = data["way_points"]
+
             stringWayPoints = json.dumps(wayPoints)
             routeSearchRes = Routes.objects.filter(route_name=routeName).first()
             if routeSearchRes:
@@ -38,7 +39,24 @@ def AddRoutes(request):
         else:
             r= Routes.objects.get(route_name=routeName)
             r.delete()
+    return render(request,"add_routes.html",context=context)
 
-
+def EditStops(request):
+    context = {}
+    if request.method == "POST":
+        data = json.loads(request.body)
+        if data["action"] == "search_route":
+            try:
+                r = Routes.objects.get(route_name = data["route_name"])
+                return JsonResponse({
+                    "search_success":True,
+                    "bus_stops":r.route_data
+                })
+            except Routes.DoesNotExist:
+                return JsonResponse({
+                    "search_success":False
+                })
+                
     print(context)
-    return render(request,"admin_panel.html",context=context)
+
+    return render(request,"edit_stops.html",context=context)
