@@ -208,6 +208,16 @@
     const clearButton = document.getElementById("clear-btn");
     const searchButton = document.getElementById("search-btn");
     const routeNameInp = document.getElementById("routeName");
+    var busStops = [];
+    var busStopIndex = 0;
+    var bus_stops_data=[];
+    var marker;
+    const leftButton = document.getElementById("left");
+    const rightButton = document.getElementById("right");
+    const st_ind = document.getElementById("start-ind")
+    const ed_ind = document.getElementById("end-ind")
+    const stopNameInp = document.getElementById("stop-name");
+    const timeInp = document.getElementById("time")
     const csrftoken = document.querySelector(
         'meta[name="csrf-token"]'
     ).content;
@@ -228,26 +238,25 @@
         show: false,
 
         createMarker: function(i,wp,n){
-            const marker = L.marker(wp.latLng,{icon:busIcon});
+            const stopMarker = L.marker(wp.latLng,{icon:busIcon});
             const waypoints = routingControl.getWaypoints();
-            marker.on('click',e=>{
+            stopMarker.on('click',e=>{
                 const index = waypoints.findIndex(w =>
                     w.latLng && w.latLng.equals(wp.latLng)
                 );
+
+                busStopIndex = index;
+                map.removeLayer(marker)
+                marker = L.marker(bus_stops_data[busStopIndex]).addTo(map);
+                map.setView(bus_stops_data[busStopIndex],15)
+                st_ind.innerText = busStopIndex;
+                stopNameInp.value = busStops[busStopIndex].name;
+                timeInp.value = busStops[busStopIndex].tfps;
+
             })
-            return marker;
+            return stopMarker;
         }
     }).addTo(map);
-    var busStops = [];
-    var busStopIndex = 0;
-    var bus_stops_data=[];
-    var marker;
-    const leftButton = document.getElementById("left");
-    const rightButton = document.getElementById("right");
-    const st_ind = document.getElementById("start-ind")
-    const ed_ind = document.getElementById("end-ind")
-    const stopNameInp = document.getElementById("stop-name");
-    const timeInp = document.getElementById("time")
 
     leftButton.addEventListener("click",(e)=>{
         if(busStopIndex == 0){
