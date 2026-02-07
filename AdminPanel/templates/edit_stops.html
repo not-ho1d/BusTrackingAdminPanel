@@ -180,12 +180,18 @@
         <div id="stand-editor" class="field" style="display: none ; flex-direction: column; gap: 10px;user-select: none;">
             <label style="color: #d3d1d1;text-align: center;">--------------------------------</label>
             <label>Stop Name</label>
-            <input type="text" placeholder="Enter stop name">
+            <input type="text" id="stop-name" placeholder="Enter stop name">
             <label>Time to reach from previous stop</label>
-            <input type="number" placeholder="Enter Time in minutes">
+            <input type="number" id="time" placeholder="Enter Time in minutes">
             <div class="move-bw-stands-div" id="move-bw-stands-div">
                 <div>
-                    <button class="add-route-btn" id="right"><img src="{% static 'AdminPanel/assets/left.svg' %}" width="20" height="12"></button>
+                    <label id="start-ind"></label><label>/</label>
+                    <label id="end-ind"></label>
+                </div>
+            </div>
+            <div class="move-bw-stands-div" id="move-bw-stands-div">
+                <div>
+                    <button class="add-route-btn" id="left"><img src="{% static 'AdminPanel/assets/left.svg' %}" width="20" height="12"></button>
                     <button class="add-route-btn" id="right"><img src="{% static 'AdminPanel/assets/right.svg' %}" width="20" height="12"></button>
                 </div>
             </div>
@@ -211,8 +217,6 @@
         iconAnchor:[11,22],
         popupAnchor:[0,-22]
     })
-    var busStops = [];
-
     const map = L.map('map').setView([11.7590518, 76.0047251], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -234,7 +238,45 @@
             return marker;
         }
     }).addTo(map);
+    var busStops = [];
+    var busStopIndex = 0;
+    var bus_stops_data=[];
+    var marker;
+    const leftButton = document.getElementById("left");
+    const rightButton = document.getElementById("right");
+    const st_ind = document.getElementById("start-ind")
+    const ed_ind = document.getElementById("end-ind")
+    const stopNameInp = document.getElementById("stop-name");
+    const timeInp = document.getElementById("time")
 
+    leftButton.addEventListener("click",(e)=>{
+        if(busStopIndex == 0){
+            busStopIndex=busStops.length - 1;
+        }else{
+            busStopIndex-=1;
+        }
+        map.removeLayer(marker)
+        marker = L.marker(bus_stops_data[busStopIndex]).addTo(map);
+        map.setView(bus_stops_data[busStopIndex],15)
+        st_ind.innerText = busStopIndex;
+        stopNameInp.value = busStops[busStopIndex].name;
+        timeInp.value = busStops[busStopIndex].tfps;
+    })
+
+    rightButton.addEventListener("click",(e)=>{
+        if(busStopIndex == busStops.length - 1){
+            busStopIndex=0;
+        }else{
+            busStopIndex+=1;
+        }
+        map.removeLayer(marker)
+        marker = L.marker(bus_stops_data[busStopIndex]).addTo(map);
+        map.setView(bus_stops_data[busStopIndex],15)
+        st_ind.innerText = busStopIndex;
+        stopNameInp.value = busStops[busStopIndex].name;
+        timeInp.value = busStops[busStopIndex].tfps;
+    })
+    
     searchButton.addEventListener("click",()=>{
         const routeName = routeNameInp.value;
         fetch("/edit_stops/",{
@@ -253,11 +295,11 @@
             const standEditor = document.getElementById("stand-editor");
             if(data.search_success){
                 errLabel.style.display="none";
-                const bus_stops_data = JSON.parse(data.bus_stops);
+                bus_stops_data = JSON.parse(data.bus_stops);
                 routingControl.setWaypoints(bus_stops_data);
-                bus_stops_data.forEach(bs => {
+                bus_stops_data.forEach((bs,ind) => {
                     stopDetails = {
-                        "name":"",
+                        "name":`Node${ind}`,
                         "lat":bs.lat,
                         "lng":bs.lng,
                         "tfps":0
@@ -265,7 +307,11 @@
                     busStops.push(stopDetails);
                 });
                 standEditor.style.display="flex";
-
+                st_ind.innerText = 0;
+                ed_ind.innerText = busStops.length;
+                marker = L.marker(busStops[busStopIndex]).addTo(map);
+                stopNameInp.value = busStops[busStopIndex].name;
+                timeInp.value = busStops[busStopIndex].tfps;
             }else{
                 errLabel.style.display="block";
                 standEditor.style.display="none";
