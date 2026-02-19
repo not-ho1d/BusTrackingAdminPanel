@@ -138,6 +138,12 @@
             justify-content: space-evenly;
             gap: 9%;
         }
+        .move-bw-stands-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
     </style>
 </head>
 <body>
@@ -145,8 +151,8 @@
 <div class="navbar">
     <div class="nav-left">AdminPanel</div>
     <div class="nav-right">
-        <a href="#" id="curr_page">Add Routes</a>
-        <a href="{% url 'add_buses' %}">Add Buses</a>
+        <a href="{% url 'add_routes' %}">Add Routes</a>
+        <a href="{% url 'add_buses' %}" id="curr_page">Add Buses</a>
         <a href="{% url 'edit_stops' %}">Edit Stops</a>
     </div>
 </div>
@@ -160,20 +166,28 @@
 
     <div class="side-section">
         <div class="field">
-            <label for="routeName">Route Name</label>
+            <label for="routeName">Bus Name</label>
+            <input type="text" id="busName" placeholder="Enter Bus name">
+        </div>
+        <div class="field">
+            <label for="routeName">From</label>
+            <input type="text" id="from" placeholder="Enter from stand">
+        </div>
+        <div class="field">
+            <label for="routeName">To</label>
+            <input type="text" id="to" placeholder="Enter to stand">
+        </div>
+        <div class="field">
+            <label for="routeName">Route</label>
             <input type="text" id="routeName" placeholder="Enter route name">
         </div>
-        <div class="option-div">
-            <button class="add-route-btn" id="add-route-btn">Save</button>
-            <button class="add-route-btn" id="clear-route-btn"><img src="{% static 'AdminPanel/assets/eraser-svgrepo-com.svg' %}" width="20" height="12"></button>
-            <button class="add-route-btn" id="delete-route-btn"><img src="{% static 'AdminPanel/assets/trash-bin.svg' %}" width="20" height="12"></button>
-        </div>
         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
-            <label>View Routes</label>
-            {% for r in routes %}
-            <a class="route-names" data-route_name="{{r.route_name}}" data-route="{{r.route_data}}">{{ r.route_name }}</a>
-            {% endfor %}
+            <label id="no-matching-route-err" style="display: none;color: #c92828;">Route Does Not Exist</label>
         </div>
+        <div class="option-div">
+            <button class="add-route-btn" id="add-btn">Add</button>
+        </div>
+        
     </div>
 </div>
 
@@ -182,20 +196,27 @@
 
 <script>
     const BUS_ICON_URL = "{% static 'AdminPanel/assets/bus-stop-pointer.svg' %}";
-    const addRouteButton = document.getElementById("add-route-btn");
-    const clearRouteButton = document.getElementById("clear-route-btn");
-    const deleteRouteButton = document.getElementById("delete-route-btn");
-    const map = L.map('map').setView([11.7590518, 76.0047251], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    const busIcon = L.icon({
+    const MOVING_BUS_ICON_URL = "{% static 'AdminPanel/assets/bus.svg' %}"
+    var marker,coords;
+    const csrftoken = document.querySelector(
+        'meta[name="csrf-token"]'
+    ).content;
+    const stopIcon = L.icon({
         iconUrl:BUS_ICON_URL,
         iconSize:[22,22],
         iconAnchor:[11,22],
         popupAnchor:[0,-22]
     })
+    const busIcon = L.icon({
+        iconUrl:MOVING_BUS_ICON_URL,
+        iconSize:[22,22],
+        iconAnchor:[11,22],
+        popupAnchor:[0,-22]
+    })
+    const map = L.map('map').setView([11.7590518, 76.0047251], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    var clickedPoints = [];
+
     const routingControl = L.Routing.control({
         waypoints: [],
         addWaypoints: false,
@@ -204,94 +225,103 @@
         show: false,
 
         createMarker: function(i,wp,n){
-            const marker = L.marker(wp.latLng,{icon:busIcon});
+            const stopMarker = L.marker(wp.latLng,{icon:stopIcon});
             const waypoints = routingControl.getWaypoints();
-            marker.on('click',e=>{
+            stopMarker.on('click',e=>{
                 const index = waypoints.findIndex(w =>
                     w.latLng && w.latLng.equals(wp.latLng)
                 );
-                waypoints.splice(index,1);
-                clickedPoints.splice(index,1);
-                routingControl.setWaypoints(waypoints);
             })
-            return marker;
+            return stopMarker;
         }
     }).addTo(map);
+    
+    function animateMarker(marker, start, end, duration = 3000) {
+        let startTime = null;
 
-    map.on('click',e=>{
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        clickedPoints.push(L.latLng(lat,lng));
-        routingControl.setWaypoints(clickedPoints)
-    })
+        function move(timestamp) {
+            if (!startTime) startTime = timestamp;
 
-    const csrftoken = document.querySelector(
-        'meta[name="csrf-token"]'
-    ).content;
+            let progress = (timestamp - startTime) / duration;
 
-    addRouteButton.addEventListener("click",e=>{
-        const routeNameInp = document.getElementById("routeName");
-        const routeName = routeNameInp.value;
-        const plainPoints = clickedPoints.map(p => ({
-            lat: p.lat,
-            lng: p.lng
-        }));
+            if (progress > 1) progress = 1;
+
+            let lat = start.lat + (end.lat - start.lat) * progress;
+            let lng = start.lng + (end.lng - start.lng) * progress;
+
+            marker.setLatLng([lat, lng]);
+
+            if (progress < 1) {
+                requestAnimationFrame(move);
+            }
+        }
+
+        requestAnimationFrame(move);
+    }   
+    function animateAlongRoute(marker, coords, speed = 50) {
+        let i = 0;
+
+        function moveNext() {
+            if (i >= coords.length - 1) return;
+
+            animateMarker(marker, coords[i], coords[i + 1], speed);
+
+            i++;
+            setTimeout(moveNext, speed);
+        }
+
+        moveNext();
+    }
 
 
-        fetch("/add_routes/",{
-            method:"POST",
-            headers:{
-                "Content-Type": "application/json",
-                "X-CSRFToken":csrftoken
-            },
-            body: JSON.stringify({
-                action:"add",
-                route_name:routeName,
-                way_points:plainPoints
-            })
-        });
 
-        /*const alertDiv = document.getElementById("alert");
-        alertDiv.classList.remove("hidden");
-        setTimeout(() => {
-            alertDiv.classList.add("hidden");
-        }, 900);*/
-        location.reload()
-    })
-
-    clearRouteButton.addEventListener("click",(e)=>{
-        clickedPoints.length = 0;
-        routingControl.setWaypoints(clickedPoints);
-    })
-
-    deleteRouteButton.addEventListener("click",()=>{
-        const routeNameInp = document.getElementById("routeName");
-        const routeName = routeNameInp.value;
-
-        fetch("/add_routes/",{
-            method:"POST",
-            headers:{
-                "Content-Type": "application/json",
-                "X-CSRFToken":csrftoken
-            },
-            body: JSON.stringify({
-                action:"delete",
-                route_name:routeName
-            })
-        });
-
-        location.reload();
-    })
-    document.querySelectorAll(".route-names").forEach(el => {
-        el.addEventListener("click",(e)=>{
-            const route = JSON.parse(el.dataset.route);
-            clickedPoints = route;
-            routingControl.setWaypoints(clickedPoints);
-
-            const routeNameInp = document.getElementById("routeName");
-            routeNameInp.value = el.dataset.route_name;
-        })
+    routingControl.on('routesfound', e => {
+        coords = e.routes[0].coordinates;
+        if (marker) marker.remove();
+        marker = L.marker([coords[0].lat, coords[0].lng], {
+            icon: busIcon
+        }).addTo(map);
+        animateAlongRoute(marker, coords, 120);
     });
+
+
+    
+    const busName = document.getElementById("busName");
+    const routeName = document.getElementById("routeName");
+    const from = document.getElementById("from");
+    const to = document.getElementById("to");
+    const addButton = document.getElementById("add-btn");
+
+    addButton.addEventListener("click",(e)=>{
+        
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"route_verification",
+                route_name:routeName.value,
+            })
+        }).then(res=> res.json())
+        .then(data=>{
+            const errLabel = document.getElementById("no-matching-route-err");
+            if(data.search_success){
+                errLabel.style.display = "none"
+                let route=[];
+                const stopsData = data.stops;
+                stopsData.forEach(e => {
+                    route.push(L.latLng(e.lat,e.lng));
+                });
+                routingControl.setWaypoints(route)
+                
+            }else{
+                errLabel.style.display = "block"
+            }
+        })
+    })
+    
 </script>
 
 </body>

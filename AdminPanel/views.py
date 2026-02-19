@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from .models import Routes
+from AdminPanel.models import Routes
 import json
 # Create your views here.
 def AddRoutes(request):
@@ -50,18 +50,38 @@ def EditStops(request):
                 r = Routes.objects.get(route_name = data["route_name"])
                 return JsonResponse({
                     "search_success":True,
-                    "bus_stops":r.route_data
+                    "bus_stops":r.route_data,
+                    "stops":r.stopsData
                 })
             except Routes.DoesNotExist:
                 return JsonResponse({
                     "search_success":False
                 })
-        elif data["action"] == "save_stop_data":
+        elif data["action"] == "save_tfps":
             try:
-                stopData = data["stop_data"]
-                print(stopData[0])
-            except:
-                pass                
+                r = Routes.objects.get(route_name = data["route_name"])
+                r.stopsData = data["stops"]
+                r.save()
+            except Routes.DoesNotExist:
+                print("no route")                
     print(context)
 
     return render(request,"edit_stops.html",context=context)
+
+def AddBuses(request):
+    ctx={}
+    if request.method == "POST":
+        data = json.loads(request.body)
+        if data["action"] == "route_verification":
+            print(data)
+            try:
+                r = Routes.objects.get(route_name = data["route_name"])
+                return JsonResponse({
+                    "search_success":True,
+                    "stops":r.stopsData
+                })
+            except Routes.DoesNotExist:
+                return JsonResponse({
+                    "search_success":False
+                })
+    return render(request,"add_buses.html",context=ctx)
