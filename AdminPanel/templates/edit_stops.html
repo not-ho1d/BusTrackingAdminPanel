@@ -218,6 +218,7 @@
     const ed_ind = document.getElementById("end-ind")
     const stopNameInp = document.getElementById("stop-name");
     const timeInp = document.getElementById("time")
+    
     const csrftoken = document.querySelector(
         'meta[name="csrf-token"]'
     ).content;
@@ -244,19 +245,18 @@
                 const index = waypoints.findIndex(w =>
                     w.latLng && w.latLng.equals(wp.latLng)
                 );
-
-                busStopIndex = index;
+                busStopIndex = index
                 map.removeLayer(marker)
                 marker = L.marker(bus_stops_data[busStopIndex]).addTo(map);
                 map.setView(bus_stops_data[busStopIndex],15)
                 st_ind.innerText = busStopIndex;
                 stopNameInp.value = busStops[busStopIndex].name;
                 timeInp.value = busStops[busStopIndex].tfps;
-
             })
             return stopMarker;
         }
     }).addTo(map);
+    
 
     leftButton.addEventListener("click",(e)=>{
         if(busStopIndex == 0){
@@ -326,6 +326,21 @@
                 standEditor.style.display="none";
             }
         })
+    })
+
+    saveButton.addEventListener("click",(e)=>{
+        fetch("/edit_stops/",{
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "X-CSRFToken":csrftoken
+                },
+                body:JSON.stringify({
+                    "action":"save_stop_data",
+                    "stop_data":busStops
+                })
+            }
+        )
     })
     
     

@@ -223,6 +223,7 @@
         const lng = e.latlng.lng;
         clickedPoints.push(L.latLng(lat,lng));
         routingControl.setWaypoints(clickedPoints)
+        map.setView(e.latlng,15)
     })
 
     const csrftoken = document.querySelector(

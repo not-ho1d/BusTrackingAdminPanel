@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from AdminPanel.models import Routes
+from .models import Routes
 import json
 # Create your views here.
 def AddRoutes(request):
@@ -56,7 +56,12 @@ def EditStops(request):
                 return JsonResponse({
                     "search_success":False
                 })
-                
+        elif data["action"] == "save_stop_data":
+            try:
+                stopData = data["stop_data"]
+                print(stopData[0])
+            except:
+                pass                
     print(context)
 
     return render(request,"edit_stops.html",context=context)
