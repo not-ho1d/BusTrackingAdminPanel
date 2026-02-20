@@ -184,10 +184,41 @@
         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
             <label id="no-matching-route-err" style="display: none;color: #c92828;">Route Does Not Exist</label>
         </div>
-        <div class="option-div">
-            <button class="add-route-btn" id="add-btn">Add</button>
+        <div class="field option-div"><label for="routeName">Takeoff 1</label> <label for="routeName">Return 1</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to1" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt1" placeholder="return time">
         </div>
-        
+        <div class="field option-div"><label for="routeName">Takeoff 2</label> <label for="routeName">Return 2</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to2" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt2" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 3</label> <label for="routeName">Return 3</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to3" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt3" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 4</label> <label for="routeName">Return 4</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to4" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt4" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 5</label> <label for="routeName">Return 5</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to5" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt5" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 6</label> <label for="routeName">Return 6</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to6" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt6" placeholder="return time">
+        </div>
+        <div class="option-div">
+            <button class="add-route-btn" id="add-btn">Save</button>
+            <button class="add-route-btn" id="clear-route-btn"><img src="{% static 'AdminPanel/assets/eraser-svgrepo-com.svg' %}" width="20" height="12"></button>
+            <button class="add-route-btn" id="delete-route-btn"><img src="{% static 'AdminPanel/assets/trash-bin.svg' %}" width="20" height="12"></button>
+        </div>
     </div>
 </div>
 
@@ -236,62 +267,25 @@
         }
     }).addTo(map);
     
-    function animateMarker(marker, start, end, duration = 3000) {
-        let startTime = null;
-
-        function move(timestamp) {
-            if (!startTime) startTime = timestamp;
-
-            let progress = (timestamp - startTime) / duration;
-
-            if (progress > 1) progress = 1;
-
-            let lat = start.lat + (end.lat - start.lat) * progress;
-            let lng = start.lng + (end.lng - start.lng) * progress;
-
-            marker.setLatLng([lat, lng]);
-
-            if (progress < 1) {
-                requestAnimationFrame(move);
-            }
-        }
-
-        requestAnimationFrame(move);
-    }   
-    function animateAlongRoute(marker, coords, speed = 50) {
-        let i = 0;
-
-        function moveNext() {
-            if (i >= coords.length - 1) return;
-
-            animateMarker(marker, coords[i], coords[i + 1], speed);
-
-            i++;
-            setTimeout(moveNext, speed);
-        }
-
-        moveNext();
-    }
-
-
-
-    routingControl.on('routesfound', e => {
-        coords = e.routes[0].coordinates;
-        if (marker) marker.remove();
-        marker = L.marker([coords[0].lat, coords[0].lng], {
-            icon: busIcon
-        }).addTo(map);
-        animateAlongRoute(marker, coords, 120);
-    });
-
-
-    
     const busName = document.getElementById("busName");
     const routeName = document.getElementById("routeName");
     const from = document.getElementById("from");
     const to = document.getElementById("to");
     const addButton = document.getElementById("add-btn");
-
+    const deleteButton = document.getElementById("delete-route-btn");
+    const clearButton = document.getElementById("clear-route-btn");
+    const to1 = document.getElementById("to1");
+    const to2 = document.getElementById("to2");
+    const to3 = document.getElementById("to3");
+    const to4 = document.getElementById("to4");
+    const to5 = document.getElementById("to5");
+    const to6 = document.getElementById("to6");
+    const rt1 = document.getElementById("rt1");
+    const rt2 = document.getElementById("rt2");
+    const rt3 = document.getElementById("rt3");
+    const rt4 = document.getElementById("rt4");
+    const rt5 = document.getElementById("rt5");
+    const rt6 = document.getElementById("rt6");
     addButton.addEventListener("click",(e)=>{
         
         fetch("/add_buses/",{
@@ -315,11 +309,149 @@
                     route.push(L.latLng(e.lat,e.lng));
                 });
                 routingControl.setWaypoints(route)
-                
+                let formData = JSON.stringify({
+                    bus_name:busName.value,
+                    route_name:routeName.value,
+                    from:from.value,
+                    to:to.value,
+                    to1:to1.value,
+                    to2:to2.value,
+                    to3:to3.value,
+                    to4:to4.value,
+                    to5:to5.value,
+                    to6:to6.value,
+                    rt1:rt1.value,
+                    rt2:rt2.value,
+                    rt3:rt3.value,
+                    rt4:rt4.value,
+                    rt5:rt5.value,
+                    rt6:rt6.value,
+                })
+                fetch("/add_buses/",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type": "application/json",
+                        "X-CSRFToken":csrftoken
+                    },
+                    body: JSON.stringify({
+                        action:"save_bus",
+                        bus_data:formData,
+                    })
+                })
             }else{
                 errLabel.style.display = "block"
             }
         })
+    })
+
+    busName.addEventListener("input",e=>{
+        let enterdName = e.target.value;
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"search_bus",
+                bus_name:enterdName,
+            })
+        }).then(res=>res.json())
+        .then(data=>{
+            if(data.search_success){
+                routeName.value = data.route_name;
+                to.value = data.to;
+                from.value=data.from;
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = data.takeoffs[ind];
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = data.returns[ind];
+                });
+                fetch("/add_buses/",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type": "application/json",
+                        "X-CSRFToken":csrftoken
+                    },
+                    body: JSON.stringify({
+                        action:"route_verification",
+                        route_name:routeName.value,
+                    })
+                }).then(res=> res.json())
+                .then(data=>{
+                    let route=[];
+                    const stopsData = data.stops;
+                    stopsData.forEach(e => {
+                        route.push(L.latLng(e.lat,e.lng));
+                    });
+                    routingControl.setWaypoints(route)
+                })
+            }else{
+                routeName.value = "";
+                to.value = "";
+                from.value= "";
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                routingControl.setWaypoints([])
+            }
+        })
+        
+    })
+    deleteButton.addEventListener("click",e=>{
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"delete_bus",
+                bus_name:busName.value,
+            })
+        }).then(res=>res.json())
+        .then(data=>{
+            if(data.delete_success){
+                busName.value=""
+                routeName.value = "";
+                to.value = "";
+                from.value= "";
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                routingControl.setWaypoints([])
+            }else{
+                console.log("delte fail")
+            }
+        })
+    })
+    clearButton.addEventListener("click",e=>{
+        busName.value=""
+        routeName.value = "";
+        to.value = "";
+        from.value= "";
+        const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+        const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+        takeOffInputs.forEach((el,ind)=> {
+            el.value = "";
+        });
+        returnInputs.forEach((el,ind)=> {
+            el.value = "";
+        });
+        routingControl.setWaypoints([])
     })
     
 </script>

@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from AdminPanel.models import Routes
+from AdminPanel.models import Routes,Bus
 import json
 # Create your views here.
 def AddRoutes(request):
@@ -73,7 +73,6 @@ def AddBuses(request):
     if request.method == "POST":
         data = json.loads(request.body)
         if data["action"] == "route_verification":
-            print(data)
             try:
                 r = Routes.objects.get(route_name = data["route_name"])
                 return JsonResponse({
@@ -83,5 +82,50 @@ def AddBuses(request):
             except Routes.DoesNotExist:
                 return JsonResponse({
                     "search_success":False
+                })
+        elif data["action"] == "save_bus":
+            busData = json.loads(data["bus_data"])
+            takeOffs = [busData["to1"],busData["to2"],busData["to3"],busData["to4"],busData["to5"],busData["to6"]]
+            returns = [busData["rt1"],busData["rt2"],busData["rt3"],busData["rt4"],busData["rt5"],busData["rt6"]]
+            try:
+                bObj = Bus.objects.get(bus_name = busData["bus_name"])
+                if(bObj == busData["bus_name"]):
+                    bObj.delete()
+            except:
+                pass
+            b=Bus(
+                bus_name = busData["bus_name"],
+                route_name = busData["route_name"],
+                from_stop = busData["from"],
+                to_stop = busData["to"],
+                take_offs = takeOffs,
+                returns = returns
+            )
+            b.save()
+        elif data["action"] == "search_bus":
+            try:
+                b=Bus.objects.get(bus_name = data["bus_name"])
+                return JsonResponse({
+                    "search_success":True,
+                    "from":b.from_stop,
+                    "to":b.to_stop,
+                    "route_name":b.route_name,
+                    "takeoffs":b.take_offs,
+                    "returns":b.returns
+                })
+            except Bus.DoesNotExist:
+                return JsonResponse({
+                    "search_success":False
+                })
+        elif data["action"] == "delete_bus":
+            try:
+                b = Bus.objects.get(bus_name = data["bus_name"])
+                b.delete()
+                return JsonResponse({
+                    "delete_success":True
+                })
+            except:
+                return JsonResponse({
+                    "delete_success":False
                 })
     return render(request,"add_buses.html",context=ctx)
