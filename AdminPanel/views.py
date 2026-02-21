@@ -2,6 +2,13 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from AdminPanel.models import Routes,Bus
 import json
+from datetime import datetime, timedelta
+#utils
+def timeaddition(time_str, minutes):
+    t = datetime.strptime(time_str, "%H:%M") 
+    new_time = t + timedelta(minutes=int(minutes))
+    return new_time.strftime("%H:%M")
+
 # Create your views here.
 def AddRoutes(request):
     context = {}
@@ -99,9 +106,42 @@ def AddBuses(request):
                 from_stop = busData["from"],
                 to_stop = busData["to"],
                 take_offs = takeOffs,
-                returns = returns
+                returns = returns,
             )
+            #timetable making
+            r = Routes.objects.get(route_name=busData["route_name"])
+            stop_data = r.stopsData
+            no_of_takeoffs = b.take_offs_len()
+            timetable = {}
+            for x,y in zip(takeOffs[:no_of_takeoffs],returns[:no_of_takeoffs]):
+                stx = x
+                init_ind = stx
+                takeoff_tt = {}
+                return_tt = {}
+                for ind,sd in enumerate(stop_data):
+                    if(ind<len(stop_data)):
+                        if(ind==0):
+                            stx=x
+                        else:
+                            stx=timeaddition(stx,stop_data[ind]["tfps"])
+                        #print("stx: ",stx," tfps :",stop_data[ind+1]["tfps"])
+                        takeoff_tt[sd["name"]]=stx
+                sty = y
+                stop_data_rev= list(reversed(stop_data))
+                for ind,sd in enumerate(stop_data_rev):
+                    if ind==0:
+                        return_tt[sd["name"]]=sty
+                    else:
+                        sty=timeaddition(sty,stop_data_rev[ind-1]["tfps"])
+                        return_tt[sd["name"]]=sty
+                timetable[x] = takeoff_tt
+                timetable[y] = return_tt
+                #print(takeoff_tt)
+                #print(return_tt)
+            print(timetable)
+            b.timetable = timetable
             b.save()
+
         elif data["action"] == "search_bus":
             try:
                 b=Bus.objects.get(bus_name = data["bus_name"])

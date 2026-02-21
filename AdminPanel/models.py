@@ -17,3 +17,9 @@ class Bus(models.Model):
     to_stop = models.CharField(max_length=100)
     take_offs = models.JSONField(default=list)
     returns = models.JSONField(default=list)
+    timetable = models.JSONField(default=dict)
+
+    def take_offs_len(self):
+        for ind,i in enumerate(self.take_offs):
+            if(i==""):
+                return ind
