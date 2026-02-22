@@ -293,6 +293,7 @@
     
     searchButton.addEventListener("click",()=>{
         const routeName = routeNameInp.value;
+        busStops.length=0;
         fetch("/edit_stops/",{
             method:"POST",
             headers:{
@@ -319,8 +320,10 @@
                         "lng":bs.lng,
                         "tfps":0
                     }
-                    stopDetails.name = stops[ind].name;
-                    stopDetails.tfps = stops[ind].tfps;
+                    if(stops[ind]){
+                        stopDetails.name = stops[ind].name;
+                        stopDetails.tfps = stops[ind].tfps;
+                    }
                     busStops.push(stopDetails);
                 });
 

@@ -249,14 +249,14 @@
                 route_name:routeName,
                 way_points:plainPoints
             })
-        });
+        }).then(res=> location.reload());
 
         /*const alertDiv = document.getElementById("alert");
         alertDiv.classList.remove("hidden");
         setTimeout(() => {
             alertDiv.classList.add("hidden");
         }, 900);*/
-        location.reload()
+        
     })
 
     clearRouteButton.addEventListener("click",(e)=>{
@@ -278,9 +278,7 @@
                 action:"delete",
                 route_name:routeName
             })
-        });
-
-        location.reload();
+        }).then(res=> location.reload());
     })
     document.querySelectorAll(".route-names").forEach(el => {
         el.addEventListener("click",(e)=>{

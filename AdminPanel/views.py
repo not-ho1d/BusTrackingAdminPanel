@@ -1,6 +1,8 @@
 from django.shortcuts import render
-from django.http import JsonResponse
-from AdminPanel.models import Routes,Bus
+from django.http import JsonResponse,HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from AdminPanel.models import Routes,Bus,Stops
+from django.db.models import Q
 import json
 from datetime import datetime, timedelta
 #utils
@@ -45,6 +47,11 @@ def AddRoutes(request):
                 r.save()
         else:
             r= Routes.objects.get(route_name=routeName)
+            for stops in r.stopsData:
+                s =Stops.objects.get(stop_name = stops["name"])
+                if routeName in s.parent_routes:
+                    s.parent_routes.remove(routeName)
+                s.save()
             r.delete()
     return render(request,"add_routes.html",context=context)
 
@@ -65,13 +72,28 @@ def EditStops(request):
                     "search_success":False
                 })
         elif data["action"] == "save_tfps":
+            for stop in data["stops"]:
+                stop_name = stop["name"]
+                try:
+                    s = Stops.objects.get(stop_name = stop_name)
+                    if data["route_name"] not in s.parent_routes:
+                        s.parent_routes.append(data["route_name"])
+                    s.save()
+                    print(s.stop_name," : ",s.parent_routes)
+                except Stops.DoesNotExist:
+                    s = Stops(
+                        stop_name = stop_name,
+                        parent_routes = [data["route_name"]]
+                    )
+                    s.save()
+                    print(s.stop_name," : ",s.parent_routes)
+                    
             try:
                 r = Routes.objects.get(route_name = data["route_name"])
                 r.stopsData = data["stops"]
                 r.save()
             except Routes.DoesNotExist:
                 print("no route")                
-    print(context)
 
     return render(request,"edit_stops.html",context=context)
 
@@ -169,3 +191,16 @@ def AddBuses(request):
                     "delete_success":False
                 })
     return render(request,"add_buses.html",context=ctx)
+
+@csrf_exempt
+def Api(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        if data["action"] == "find_bus_search":
+            req = {"time":"10:40","from":"thonichal","to":"dwaraka"}
+            routes = Stops.objects.filter(stop_name__in=[req["from"],req["to"]]).values("stop_name","parent_routes").distinct()
+            stand1routes = routes[0]["parent_routes"]
+            stand2routes = routes[1]["parent_routes"]
+            shared_routes = list(set(stand1routes) & set(stand2routes))
+            
+    return HttpResponse("hello")

@@ -23,3 +23,14 @@ class Bus(models.Model):
         for ind,i in enumerate(self.take_offs):
             if(i==""):
                 return ind
+
+class Stops(models.Model):
+    stop_name = models.CharField(max_length=100)
+    parent_routes = models.JSONField(default=list)
+
+class WorkerUpdates(models.Model):
+    bus_name = models.CharField(max_length=100)
+    returning = models.BooleanField(default=False)
+    loaded_timetable = models.JSONField(default=list)
+    live_location = models.CharField(max_length=200,null=True)
+    
