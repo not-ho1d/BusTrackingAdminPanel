@@ -30,6 +30,7 @@ class Stops(models.Model):
 
 class WorkerUpdates(models.Model):
     bus_name = models.CharField(max_length=100)
+    route_name = models.CharField(max_length=100,null=True)
     returning = models.BooleanField(default=False)
     loaded_timetable = models.JSONField(default=list)
     live_location = models.CharField(max_length=200,null=True)

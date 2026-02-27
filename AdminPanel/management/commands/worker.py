@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.core.cache import cache
 from AdminPanel.models import Bus,WorkerUpdates
 import time
+import json
 import threading
 
 def addOne(num):
@@ -14,8 +15,9 @@ def addOne(num):
 def getTimeTable(bus_name,time):
     b = Bus.objects.get(bus_name=bus_name)
     wu = WorkerUpdates.objects.get(bus_name=bus_name)
+    wu.route_name = b.route_name
     wu.loaded_timetable = b.timetable[time]
-    print(wu.loaded_timetable)
+    print("route: ",wu.route_name,"\n",wu.loaded_timetable)
     wu.save()
 
 class Time:
@@ -36,13 +38,15 @@ class Time:
                 self.sec="00"
                 self.min=addOne(self.min)
                 #print(f'{self.hrs} : {self.min}')
-                #cache.set("time",f'{self.hrs}:{self.min}:{self.sec}')
+
                 #print("cached")
                 if(int(self.min)>59):
                     self.min="00"
                     self.hrs=addOne(self.hrs)
                     if(int(self.hrs)>24):
                         self.hrs="01"
+                with open("AdminPanel/global_dat.json","w") as file:
+                    file.write(json.dumps({"time":f'{self.hrs}:{self.min}'}))
             #print(self.hrs,":",self.min,":",self.sec)
             time.sleep(clockUpdateTime)
     def stop(self):
@@ -50,7 +54,9 @@ class Time:
 
 class Command(BaseCommand):
     def handle(self,*args, **kwargs):
-        clockUpdateTime = 0.00001
+        with open("AdminPanel/conf.json","r") as file:
+            conf = json.loads(file.read())
+        clockUpdateTime = conf["clock_update_time"]
         clock = Time()
         clock.start(clockUpdateTime=clockUpdateTime)
         buses = Bus.objects.all()
@@ -62,6 +68,7 @@ class Command(BaseCommand):
                     tt_data[key].append(bus.bus_name)
                 else:
                     tt_data[key] = [bus.bus_name]
+                #tt_data[f'{key}_route'] = bus.route_name
         wu = WorkerUpdates.objects.all()
         wu.delete()
         

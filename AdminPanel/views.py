@@ -1,16 +1,34 @@
 from django.shortcuts import render
 from django.http import JsonResponse,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from AdminPanel.models import Routes,Bus,Stops
+from AdminPanel.models import Routes,Bus,Stops,WorkerUpdates
+from django.core.cache import cache
 from django.db.models import Q
 import json
 from datetime import datetime, timedelta
 #utils
+def add_minutes(time_str, mins):
+    t = datetime.strptime(time_str, "%H:%M")
+    new_time = t + timedelta(minutes=mins)
+    return new_time.strftime("%H:%M")
+def timesubtraction(time_str, mins):
+    t = datetime.strptime(time_str, "%H:%M")
+    new_time = t - timedelta(minutes=mins)
+    return new_time.strftime("%H:%M")
+
 def timeaddition(time_str, minutes):
     t = datetime.strptime(time_str, "%H:%M") 
     new_time = t + timedelta(minutes=int(minutes))
     return new_time.strftime("%H:%M")
-
+def getTime():
+    with open("AdminPanel/global_dat.json","r") as file:
+        try:
+            time = json.loads(file.read())
+            #print(time)
+            return time["time"]
+        except Exception as e:
+            print(e)
+            return "00:00"
 # Create your views here.
 def AddRoutes(request):
     context = {}
@@ -197,10 +215,57 @@ def Api(request):
     if request.method == "POST":
         data = json.loads(request.body)
         if data["action"] == "find_bus_search":
-            req = {"time":"10:40","from":"thonichal","to":"dwaraka"}
+            req = {"time":"10:40","from":"vellamunda","to":"nvlpzha"}
             routes = Stops.objects.filter(stop_name__in=[req["from"],req["to"]]).values("stop_name","parent_routes").distinct()
             stand1routes = routes[0]["parent_routes"]
             stand2routes = routes[1]["parent_routes"]
             shared_routes = list(set(stand1routes) & set(stand2routes))
-            
-    return HttpResponse("hello")
+            buses_in_route = []
+            if shared_routes:
+                r =Routes.objects.get(route_name = shared_routes[0])
+                returning = False
+                for stop in r.stopsData:
+                    if(stop["name"] == req["from"]):
+                        #print("from first")
+                        returning = False
+                        break
+                    elif(stop["name"] == req["to"]):
+                        #print("to first")
+                        returning = True
+                        break
+                time = getTime()
+                print(f'---current time: {time}')
+                for route in shared_routes:
+                    buses_list = WorkerUpdates.objects.filter(route_name = route)
+                    for bus in buses_list:
+                        bus_data = Bus.objects.filter(bus_name = bus.bus_name).first()
+                        #print(bus_data.timetable)
+                        if returning:
+                            return_indexes = bus_data.returns
+                            #print(return_indexes)
+                            for ind in return_indexes:
+                                if ind != '':
+                                    bus_keys = list(bus_data.timetable[ind].keys())
+                                    from_stand_index = bus_keys.index(req["from"])
+                                    buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_data.timetable[ind][req["from"]]})
+                        else:
+                            takeoff_indexes = bus_data.take_offs
+                            for ind in takeoff_indexes:
+                                if ind != '':
+                                    bus_keys = list(bus_data.timetable[ind].keys())
+                                    from_stand_index = bus_keys.index(req["from"])
+                                    buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_data.timetable[ind][req["from"]]})
+                
+                print("sent:  ",{
+                    "search_success":True,
+                    "data":buses_in_route
+                })
+                return JsonResponse({
+                    "search_success":True,
+                    "data":buses_in_route
+                })
+            else:
+                return JsonResponse({
+                    "search_success":False
+                })
+    return render(request,"api_debug.html",context={"time":"10:5"})
