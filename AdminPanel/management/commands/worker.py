@@ -22,8 +22,8 @@ def getTimeTable(bus_name,time):
 
 class Time:
     def __init__(self):
-        self.hrs = "08"
-        self.min = "10"
+        self.hrs = "05"
+        self.min = "55"
         self.sec = "00"
         self.running = False
     def start(self,clockUpdateTime):

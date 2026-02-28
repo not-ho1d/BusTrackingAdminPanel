@@ -6,6 +6,7 @@ class Routes(models.Model):
     route_name = models.CharField(max_length=100)
     route_data = models.CharField(default=list)
     stopsData = models.JSONField(default=list)
+    route_coords = models.JSONField(default=list,null=True)
     def get_routeData(self):
         return json.loads(self.route_data)
 

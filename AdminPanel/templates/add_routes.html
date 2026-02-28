@@ -194,6 +194,7 @@
         iconAnchor:[11,22],
         popupAnchor:[0,-22]
     })
+    var coords = []
 
     var clickedPoints = [];
     const routingControl = L.Routing.control({
@@ -225,6 +226,11 @@
         routingControl.setWaypoints(clickedPoints)
     })
 
+    routingControl.on('routesfound', function(e) {
+        const route_coords = e.routes[0]; 
+        coords = e.routes[0].coordinates
+    });
+
     const csrftoken = document.querySelector(
         'meta[name="csrf-token"]'
     ).content;
@@ -247,7 +253,8 @@
             body: JSON.stringify({
                 action:"add",
                 route_name:routeName,
-                way_points:plainPoints
+                way_points:plainPoints,
+                route_coords:coords
             })
         }).then(res=> location.reload());
 

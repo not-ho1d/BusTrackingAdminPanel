@@ -50,17 +50,19 @@ def AddRoutes(request):
 
         if action == "add":
             wayPoints = data["way_points"]
-
+            routeCoords = data["route_coords"]
             stringWayPoints = json.dumps(wayPoints)
             routeSearchRes = Routes.objects.filter(route_name=routeName).first()
             if routeSearchRes:
                 r = Routes.objects.get(route_name = routeName)
                 r.route_data = stringWayPoints
+                r.route_coords = routeCoords
                 r.save()
             else:
                 r = Routes(
                     route_name = routeName,
-                    route_data = stringWayPoints
+                    route_data = stringWayPoints,
+                    route_coords = routeCoords
                 )
                 r.save()
         else:
@@ -70,6 +72,9 @@ def AddRoutes(request):
                 if routeName in s.parent_routes:
                     s.parent_routes.remove(routeName)
                 s.save()
+            buses = Bus.objects.filter(route_name = r.route_name)
+            for bus in buses:
+                bus.delete()
             r.delete()
     return render(request,"add_routes.html",context=context)
 
@@ -215,8 +220,8 @@ def Api(request):
     if request.method == "POST":
         data = json.loads(request.body)
         if data["action"] == "find_bus_search":
-            req = {"time":"10:40","from":"vellamunda","to":"nvlpzha"}
-            routes = Stops.objects.filter(stop_name__in=[req["from"],req["to"]]).values("stop_name","parent_routes").distinct()
+            req = {"time":"10:40","from":"vellamunda","to":"niravilpuzha"}
+            routes = Stops.objects.filter(stop_name__in=[data["from"],data["to"]]).values("stop_name","parent_routes").distinct()
             stand1routes = routes[0]["parent_routes"]
             stand2routes = routes[1]["parent_routes"]
             shared_routes = list(set(stand1routes) & set(stand2routes))
@@ -226,35 +231,39 @@ def Api(request):
                 returning = False
                 for stop in r.stopsData:
                     if(stop["name"] == req["from"]):
-                        #print("from first")
+                        print("from first")
                         returning = False
                         break
                     elif(stop["name"] == req["to"]):
-                        #print("to first")
+                        print("to first")
                         returning = True
                         break
                 time = getTime()
                 print(f'---current time: {time}')
                 for route in shared_routes:
-                    buses_list = WorkerUpdates.objects.filter(route_name = route)
+                    buses_list = Bus.objects.filter(route_name = route)
                     for bus in buses_list:
-                        bus_data = Bus.objects.filter(bus_name = bus.bus_name).first()
-                        #print(bus_data.timetable)
+                        print(bus.timetable)
                         if returning:
-                            return_indexes = bus_data.returns
-                            #print(return_indexes)
+                            return_indexes = bus.returns
                             for ind in return_indexes:
                                 if ind != '':
-                                    bus_keys = list(bus_data.timetable[ind].keys())
+                                    bus_keys = list(bus.timetable[ind].keys())
                                     from_stand_index = bus_keys.index(req["from"])
-                                    buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_data.timetable[ind][req["from"]]})
+                                    bus_time= bus.timetable[ind][req["from"]]
+                                    if bus_time > time:
+                                        buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_time})
                         else:
-                            takeoff_indexes = bus_data.take_offs
+                            takeoff_indexes = bus.take_offs
+                            #print("to",takeoff_indexes)
                             for ind in takeoff_indexes:
                                 if ind != '':
-                                    bus_keys = list(bus_data.timetable[ind].keys())
+                                    bus_keys = list(bus.timetable[ind].keys())
+                                    #print("buskeys: ",bus_keys)
                                     from_stand_index = bus_keys.index(req["from"])
-                                    buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_data.timetable[ind][req["from"]]})
+                                    bus_time = bus.timetable[ind][req["from"]]
+                                    if bus_time > time:
+                                        buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_time})
                 
                 print("sent:  ",{
                     "search_success":True,
