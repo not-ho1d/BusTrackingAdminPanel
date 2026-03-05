@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from AdminPanel.models import Routes,Bus,Stops,WorkerUpdates
+from AdminPanel.models import Routes,Bus,Stops,WorkerUpdates,BusLocation
 from django.core.cache import cache
 from django.db.models import Q
 import json
@@ -276,5 +276,21 @@ def Api(request):
             else:
                 return JsonResponse({
                     "search_success":False
+                })
+        if(data["action"] == "find_bus_location"):
+            try:
+                bus = BusLocation.objects.get(bus_name = data["bus_name"])
+                print("route_coords: ",bus.live_location)
+                return JsonResponse({
+                    "live_location":True,
+                    "data":bus.live_location
+                })
+            except BusLocation.DoesNotExist:
+                bus = Bus.objects.get(bus_name = data["bus_name"])
+                route = Routes.objects.get(route_name = bus.route_name)
+                print("route_coords: ",route.route_coords[0])
+                return JsonResponse({
+                    "live_location":False,
+                    "data":route.route_coords[0]
                 })
     return render(request,"api_debug.html",context={"time":"10:5"})

@@ -7,9 +7,13 @@ class Routes(models.Model):
     route_data = models.CharField(default=list)
     stopsData = models.JSONField(default=list)
     route_coords = models.JSONField(default=list,null=True)
+    stop_to_stop_coords = models.JSONField(default=list,null=True)
     def get_routeData(self):
         return json.loads(self.route_data)
 
+class RouteCoords(models.Model):
+    route_name = models.CharField(primary_key=True)
+    data = models.JSONField(default=list)
 
 class Bus(models.Model):
     bus_name = models.CharField(max_length=100,primary_key=True)
@@ -25,6 +29,23 @@ class Bus(models.Model):
             if(i==""):
                 return ind
 
+class BusLocation(models.Model):
+    bus_name = models.CharField(max_length=100,primary_key=True)
+    route_name = models.CharField(max_length=100)
+    current_stop = models.JSONField(default=list)
+    next_stop = models.JSONField(default=list)
+    live_location = models.JSONField(default=list)
+    speed = models.FloatField(null=True)
+    
+    def update_location(self,time):
+        try:
+            ltt = WorkerUpdates.objects.get(bus_name=self.bus_name)
+            ltt = ltt.loaded_timetable
+            for key in ltt.keys():
+                if(time == ltt.get(key)):
+                    print(key, " " ,ltt.get(key))
+        except WorkerUpdates.DoesNotExist:
+            pass
 class Stops(models.Model):
     stop_name = models.CharField(max_length=100)
     parent_routes = models.JSONField(default=list)
