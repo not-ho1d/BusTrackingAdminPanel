@@ -40,7 +40,7 @@ class BusLocation(models.Model):
     stop_index = models.IntegerField(null=True)
     prev_stop_index = models.IntegerField(null=True)
     stop_change_time_indicator = models.CharField(max_length=50,null=True,default=0)
-  
+    route_coords = models.JSONField(default=list,null=True)
     
     def update_location(self,time):
         try:

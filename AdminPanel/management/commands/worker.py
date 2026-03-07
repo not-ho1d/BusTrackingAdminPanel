@@ -5,8 +5,7 @@ import time
 import json
 import math
 import threading
-from datetime import datetime
-
+import traceback
 from datetime import datetime
 
 def get_speed_per_sec(coords, start_time, end_time):
@@ -56,7 +55,7 @@ def returnTimeTable(bus_name,time):
 
 class Time:
     def __init__(self):
-        self.hrs = "06"
+        self.hrs = "05"
         self.min = "59"
         self.sec = "00"
         self.running = False
@@ -125,18 +124,24 @@ class Command(BaseCommand):
                             if(wu.returning):
                                 wu.returning = False
                                 print(f'{bus} is taking off : {time}')
-                                try:
-                                    bl = BusLocation.objects.get(bus_name = bus)
-                                    curr_tt = returnTimeTable(bus,time)
-                                    print(curr_tt)
-                                except BusLocation.DoesNotExist:
-                                    curr_tt = returnTimeTable(bus,time)
-                                    print("curr tt:", curr_tt)
+                                bl = BusLocation.objects.get(bus_name = bus)
+                                curr_tt = returnTimeTable(bus,time)
+                                curr_stop = list(curr_tt.keys())[0]
+                                next_stop = list(curr_tt.keys())[1]
+                                bl.current_stop = curr_stop
+                                bl.state = "takeoff"
 
                                 
                             else:
                                 wu.returning = True
                                 print(f'{bus} is returning : {time}')
+                                bl = BusLocation.objects.get(bus_name = bus)
+                                curr_tt = returnTimeTable(bus,time)
+                                curr_stop = list(curr_tt.keys())[-1]
+                                next_stop = list(curr_tt.keys())[-2]
+                                bl.current_stop = curr_stop
+                                bl.state = "return"
+                                
                             wu.save()
                             getTimeTable(bus,time)
                         except WorkerUpdates.DoesNotExist:
@@ -177,49 +182,108 @@ class Command(BaseCommand):
                             
                 bl_table = BusLocation.objects.all()
                 for bl_data in bl_table:
-                    if(sec!=prev_sec):
-                        curr_bus = Bus.objects.get(bus_name = bl_data.bus_name)
-                        curr_bus_route = Routes.objects.get(route_name = curr_bus.route_name)
-                        curr_bus_route_coords = curr_bus_route.stop_to_stop_coords
-                        #print(time,bl_data.stop_change_time_indicator)
-                        if(time >= bl_data.stop_change_time_indicator):
-                            print(bl_data.stop_index)
-                            bl_data.prev_stop_index = bl_data.stop_index
-                            bl_data.stop_index+=1
-                            wu_cpy = WorkerUpdates.objects.get(bus_name = bl_data.bus_name) 
-                            bl_data.current_stop = bl_data.next_stop
-                            next_stop= list(wu_cpy.loaded_timetable.keys())[bl_data.stop_index+1]
-                            bl_data.next_stop = next_stop
-                            bl_data.stop_change_time_indicator = wu_cpy.loaded_timetable[next_stop]
-                            print("current_stop: ",bl_data.current_stop, "new next_stop",bl_data.stop_change_time_indicator)
-                            print(wu_cpy.loaded_timetable)
-                            bl_data.speed = 0
-                            #bl_data.save()
+                    
+                    if bl_data.state == "takeoff":
+                        if(sec!=prev_sec):
+                            curr_bus = Bus.objects.get(bus_name = bl_data.bus_name)
+                            curr_bus_route = Routes.objects.get(route_name = curr_bus.route_name)
+                            curr_bus_route_coords = curr_bus_route.stop_to_stop_coords
                             
-                        try:
-                            wu_check = WorkerUpdates.objects.get(bus_name = curr_bus.bus_name)
-                            if wu_check:
-                                if bl_data.prev_stop_index == None:
-                                    bl_data.prev_stop_index = -1
+                            #print(time,bl_data.stop_change_time_indicator)
+                            if(time >= bl_data.stop_change_time_indicator):
+                                print(bl_data.stop_index)
+                                bl_data.prev_stop_index = bl_data.stop_index
+                                bl_data.stop_index+=1
+                                wu_cpy = WorkerUpdates.objects.get(bus_name = bl_data.bus_name) 
+                                bl_data.current_stop = bl_data.next_stop
+                                try:
+                                    next_stop= list(wu_cpy.loaded_timetable.keys())[bl_data.stop_index+1]
+                                except IndexError:
+                                    bl_data.state = "inactive"
+                                    print(bl_data.bus_name, " is inactive")
+                                    bl_data.save()
+                                    continue
+                                bl_data.next_stop = next_stop
+                                bl_data.stop_change_time_indicator = wu_cpy.loaded_timetable[next_stop]
+                                print("current_stop: ",bl_data.current_stop, "new next_stop",bl_data.stop_change_time_indicator)
+                                print(wu_cpy.loaded_timetable)
+                                bl_data.speed = 0
+                                #bl_data.save()
                                 
-                                loaded_tt = wu_check.loaded_timetable
-                                start_time = loaded_tt[bl_data.current_stop]
-                                end_time = loaded_tt[bl_data.next_stop]
-                                route_coords = curr_bus_route_coords[bl_data.stop_index]
-                                route_coords = route_coords["coords"]
-                                if bl_data.prev_stop_index > -1:
-                                    prev_route_coords = curr_bus_route_coords[bl_data.prev_stop_index]["coords"]
-                                    prev_route_coords_len = len(prev_route_coords)
-                                    route_coords = route_coords[prev_route_coords_len:]
-                                    #print("here",prev_route_coords_len,len(route_coords),bl_data.speed)
-                                #print(len(route_coords["coords"][bl_data.prev_stop_index:]))
-                                speed = get_speed_per_sec(route_coords,start_time,end_time)
-                                bl_data.speed+=speed
-                                print(f'{bl_data.bus_name}:{time}:{sec}'," : ",speed," : ",route_coords[math.floor(bl_data.speed)],f'({int(bl_data.speed)}/{len(route_coords)})')
-                                bl_data.save()
-                        except Exception as e:
-                            print(e)
-                
+                            try:
+                                wu_check = WorkerUpdates.objects.get(bus_name = curr_bus.bus_name)
+                                if wu_check:
+                                    if bl_data.prev_stop_index == None:
+                                        bl_data.prev_stop_index = -1
+                                    
+                                    loaded_tt = wu_check.loaded_timetable
+                                    start_time = loaded_tt[bl_data.current_stop]
+                                    end_time = loaded_tt[bl_data.next_stop]
+                                    bl_data.route_coords = curr_bus_route_coords[bl_data.stop_index]
+                                    bl_data.route_coords = bl_data.route_coords["coords"]
+                                    if bl_data.prev_stop_index > -1:
+                                        prev_route_coords = curr_bus_route_coords[bl_data.prev_stop_index]["coords"]
+                                        prev_route_coords_len = len(prev_route_coords)
+                                        bl_data.route_coords = bl_data.route_coords[prev_route_coords_len:]
+                                        #print("here",prev_route_coords_len,len(route_coords),bl_data.speed)
+                                    #print(len(route_coords["coords"][bl_data.prev_stop_index:]))
+                                    speed = get_speed_per_sec(bl_data.route_coords,start_time,end_time)
+                                    bl_data.speed+=speed
+                                    print(f'{bl_data.bus_name}:{time}:{sec}'," : ",speed," : ",bl_data.route_coords[math.floor(bl_data.speed)],f'({int(bl_data.speed)}/{len(bl_data.route_coords)})')
+                                    bl_data.save()
+                            except Exception as e:
+                                traceback.print_exc()
+                    elif bl_data.state == "return":
+                        if(sec!=prev_sec):
+                            curr_bus = Bus.objects.get(bus_name = bl_data.bus_name)
+                            curr_bus_route = Routes.objects.get(route_name = curr_bus.route_name)
+                            curr_bus_route_coords = curr_bus_route.stop_to_stop_coords
+                            print(curr_bus_route_coords)
+                            
+                            #print(time,bl_data.stop_change_time_indicator)
+                            if(time >= bl_data.stop_change_time_indicator):
+                                print(bl_data.stop_index)
+                                bl_data.prev_stop_index = bl_data.stop_index
+                                bl_data.stop_index+=1
+                                wu_cpy = WorkerUpdates.objects.get(bus_name = bl_data.bus_name) 
+                                bl_data.current_stop = bl_data.next_stop
+                                try:
+                                    next_stop= list(wu_cpy.loaded_timetable.keys())[bl_data.stop_index+1]
+                                except IndexError:
+                                    bl_data.state = "inactive"
+                                    bl_data.save()
+                                    continue
+                                bl_data.next_stop = next_stop
+                                bl_data.stop_change_time_indicator = wu_cpy.loaded_timetable[next_stop]
+                                print("current_stop: ",bl_data.current_stop, "new next_stop",bl_data.stop_change_time_indicator)
+                                print(wu_cpy.loaded_timetable)
+                                bl_data.speed = 0
+                                #bl_data.save()
+                                
+                            try:
+                                wu_check = WorkerUpdates.objects.get(bus_name = curr_bus.bus_name)
+                                if wu_check:
+                                    if bl_data.prev_stop_index == None:
+                                        bl_data.prev_stop_index = -1
+                                    
+                                    loaded_tt = wu_check.loaded_timetable
+                                    start_time = loaded_tt[bl_data.current_stop]
+                                    end_time = loaded_tt[bl_data.next_stop]
+                                    bl_data.route_coords = curr_bus_route_coords[bl_data.stop_index]
+                                    bl_data.route_coords = bl_data.route_coords["coords"]
+                                    if bl_data.prev_stop_index > -1:
+                                        prev_route_coords = curr_bus_route_coords[bl_data.prev_stop_index]["coords"]
+                                        prev_route_coords_len = len(prev_route_coords)
+                                        bl_data.route_coords = bl_data.route_coords[prev_route_coords_len:]
+                                        #print("here",prev_route_coords_len,len(route_coords),bl_data.speed)
+                                    #print(len(route_coords["coords"][bl_data.prev_stop_index:]))
+                                    speed = get_speed_per_sec(bl_data.route_coords,start_time,end_time)
+                                    bl_data.speed+=speed
+                                    print(f'{bl_data.bus_name}:{time}:{sec}'," : ",speed," : ",bl_data.route_coords[math.floor(bl_data.speed)],f'({int(bl_data.speed)}/{len(bl_data.route_coords)})')
+                                    bl_data.save()
+                            except Exception as e:
+                                traceback.print_exc()
+                        
                                     
 
                 
@@ -228,4 +292,4 @@ class Command(BaseCommand):
             clock.stop()
         except Exception as e:
             clock.stop()
-            print(e)
+            traceback.print_exc()

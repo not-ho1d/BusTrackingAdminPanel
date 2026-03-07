@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
-from AdminPanel.models import Bus,WorkerUpdates,Routes,RouteCoords
+from AdminPanel.models import Bus,WorkerUpdates,Routes
 import time
 import math
 
@@ -26,7 +26,6 @@ def is_within_50m(coord_lat, coord_lng, end_lat, end_lng):
 
 class Command(BaseCommand):
     def handle(self,*args, **kwargs):
-        wu = WorkerUpdates.objects.get(bus_name = "KSRTC#001")
         routes = Routes.objects.all()
         for route in routes:
             coords = route.route_coords
