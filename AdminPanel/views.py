@@ -220,7 +220,7 @@ def Api(request):
     if request.method == "POST":
         data = json.loads(request.body)
         if data["action"] == "find_bus_search":
-            req = {"time":"10:40","from":"vellamunda","to":"niravilpuzha"}
+            #req = {"time":"10:40","from":"vellamunda","to":"niravilpuzha"}
             routes = Stops.objects.filter(stop_name__in=[data["from"],data["to"]]).values("stop_name","parent_routes").distinct()
             stand1routes = routes[0]["parent_routes"]
             stand2routes = routes[1]["parent_routes"]
@@ -230,11 +230,11 @@ def Api(request):
                 r =Routes.objects.get(route_name = shared_routes[0])
                 returning = False
                 for stop in r.stopsData:
-                    if(stop["name"] == req["from"]):
+                    if(stop["name"] == data["from"]):
                         print("from first")
                         returning = False
                         break
-                    elif(stop["name"] == req["to"]):
+                    elif(stop["name"] == data["to"]):
                         print("to first")
                         returning = True
                         break
@@ -249,8 +249,8 @@ def Api(request):
                             for ind in return_indexes:
                                 if ind != '':
                                     bus_keys = list(bus.timetable[ind].keys())
-                                    from_stand_index = bus_keys.index(req["from"])
-                                    bus_time= bus.timetable[ind][req["from"]]
+                                    from_stand_index = bus_keys.index(data["from"])
+                                    bus_time= bus.timetable[ind][data["from"]]
                                     if bus_time > time:
                                         buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_time})
                         else:
@@ -260,8 +260,8 @@ def Api(request):
                                 if ind != '':
                                     bus_keys = list(bus.timetable[ind].keys())
                                     #print("buskeys: ",bus_keys)
-                                    from_stand_index = bus_keys.index(req["from"])
-                                    bus_time = bus.timetable[ind][req["from"]]
+                                    from_stand_index = bus_keys.index(data["from"])
+                                    bus_time = bus.timetable[ind][data["from"]]
                                     if bus_time > time:
                                         buses_in_route.append({"bus_route":route,"bus_name":bus.bus_name,"bus_time":bus_time})
                 

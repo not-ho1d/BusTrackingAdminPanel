@@ -36,6 +36,11 @@ class BusLocation(models.Model):
     next_stop = models.JSONField(default=list)
     live_location = models.JSONField(default=list)
     speed = models.FloatField(null=True)
+    state = models.CharField(max_length=50,null=True,default="takeoff")
+    stop_index = models.IntegerField(null=True)
+    prev_stop_index = models.IntegerField(null=True)
+    stop_change_time_indicator = models.CharField(max_length=50,null=True,default=0)
+  
     
     def update_location(self,time):
         try:
