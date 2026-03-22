@@ -665,6 +665,11 @@ def Api(request):
             except:
                 traceback.print_exc()
                 pass
+        if data["action"] == "live_or_not":
+            b = Bus.objects.get(bus_name=data["bus_name"])
+            return JsonResponse({
+                "is_live": b.driver_is_sharing_location
+            })
         if data["action"] == "add_new_timetable":
             b = Bus.objects.get(bus_name=data["bus_name"])
             timetable = copy.deepcopy(b.timetable)
