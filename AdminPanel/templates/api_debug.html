@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bus Feedback</title>
+</head>
+<body>
+
+<h3>Bus Feedback</h3>
+
+<input type="hidden" id="bus_name" value="testbus">
+<input id="time_bracket" value="07:30">
+
+<p>Was the bus early or late?</p>
+
+<label>
+    <input type="radio" name="status" value="early"> Early
+</label>
+
+<label>
+    <input type="radio" name="status" value="on_time"> On Time
+</label>
+
+<label>
+    <input type="radio" name="status" value="late"> Late
+</label>
+
+<br><br>
+
+<input type="number" id="minutes" placeholder="Enter minutes">
+
+<br><br>
+
+<button onclick="submitFeedback()">Submit</button>
+
+<script>
+function getCurrentTime() {
+    let now = new Date();
+    let h = String(now.getHours()).padStart(2, '0');
+    let m = String(now.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+function submitFeedback() {
+    let status = document.querySelector('input[name="status"]:checked');
+
+    if (!status) {
+        alert("Select early/on time/late");
+        return;
+    }
+
+    let minutes = parseInt(document.getElementById("minutes").value) || 0;
+
+    let data = {
+        action: "add_new_timetable",
+        bus_name: document.getElementById("bus_name").value,
+        time_bracket: document.getElementById("time_bracket").value,
+        early: 0,
+        late: 0,
+        current_time: getCurrentTime()  // just extra info
+    };
+
+    if (status.value === "early") {
+        data.early = minutes;
+    } else if (status.value === "late") {
+        data.late = minutes;
+    }
+    // on_time → both remain 0
+
+    fetch("/Api/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        console.log(res);
+        alert("Submitted!");
+    })
+    .catch(err => console.error(err));
+}
+</script>
+
+</body>
+</html>

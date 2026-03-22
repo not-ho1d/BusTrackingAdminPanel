@@ -1,0 +1,464 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AdminPanel</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #222;
+        }
+
+        .navbar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fff;
+        }
+
+        .nav-left {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-right a {
+            margin-left: 24px;
+            text-decoration: none;
+            font-size: 14px;
+            color: #444;
+        }
+
+        #curr_page {
+            color: #c92828;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100% - 56px);
+        }
+
+        .map-section {
+            width: 70%;
+        }
+
+        .side-section {
+            width: 30%;
+            background: #f7f7f7;
+            border-left: 1px solid #e5e5e5;
+            padding: 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .field input {
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            outline: none;
+            background: #fff;
+        }
+
+        .field input:focus {
+            border-color: #999;
+        }
+
+        .add-route-btn {
+            align-self: flex-start;
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #fff;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-route-btn:hover {
+            background: #f2f2f2;
+        }
+
+        .add-route-btn:active {
+            background: #eaeaea;
+        }
+
+        .route-names:hover{
+            color: #0827d6;
+        }
+
+        .route-names:active{
+            color: #fd0b0b;
+        }
+
+        .alert{
+            position: fixed;
+            background: #187c42;
+            color: white;
+            padding: 8px 50px;
+            right: 40%;
+            top: 1px;
+            border-radius: 2px;
+            transition: opacity 0.6s ease;
+            display: hidden;
+        }
+        .hidden{
+            opacity: 0;
+        }
+        .option-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
+        .move-bw-stands-div{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            gap: 9%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="nav-left">AdminPanel</div>
+    <div class="nav-right">
+        <a href="{% url 'add_drivers' %}" >Add Drivers</a>
+        <a href="{% url 'view_drivers' %}">Edit Drivers</a>
+        <a href="{% url 'add_routes' %}">Add Routes</a>
+        <a href="{% url 'add_buses' %}" id="curr_page">Add Buses</a>
+        <a href="{% url 'edit_stops' %}">Edit Stops</a>
+    </div>
+</div>
+<div class="alert hidden" id="alert">
+    <Label>Saved Route</Label>
+</div>
+<div class="container">
+    <div class="map-section">
+        <div id="map"></div>
+    </div>
+
+    <div class="side-section">
+        <div class="field">
+            <label for="routeName">Bus Name</label>
+            <input type="text" id="busName" placeholder="Enter Bus name">
+        </div>
+        <div class="field">
+            <label for="routeName">From</label>
+            <input type="text" id="from" placeholder="Enter from stand">
+        </div>
+        <div class="field">
+            <label for="routeName">To</label>
+            <input type="text" id="to" placeholder="Enter to stand">
+        </div>
+        <div class="field">
+            <label for="routeName">Route</label>
+            <input type="text" id="routeName" placeholder="Enter route name">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
+            <label id="no-matching-route-err" style="display: none;color: #c92828;">Route Does Not Exist</label>
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 1</label> <label for="routeName">Return 1</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to1" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt1" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 2</label> <label for="routeName">Return 2</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to2" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt2" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 3</label> <label for="routeName">Return 3</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to3" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt3" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 4</label> <label for="routeName">Return 4</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to4" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt4" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 5</label> <label for="routeName">Return 5</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to5" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt5" placeholder="return time">
+        </div>
+        <div class="field option-div"><label for="routeName">Takeoff 6</label> <label for="routeName">Return 6</label></div>
+        <div class="option-div field" >
+            <input style="width: 50%;" type="time" id="to6" placeholder="takeoff time">
+            <input style="width: 50%;" type="time" id="rt6" placeholder="return time">
+        </div>
+        <div class="option-div">
+            <button class="add-route-btn" id="add-btn">Save</button>
+            <button class="add-route-btn" id="clear-route-btn"><img src="{% static 'AdminPanel/assets/eraser-svgrepo-com.svg' %}" width="20" height="12"></button>
+            <button class="add-route-btn" id="delete-route-btn"><img src="{% static 'AdminPanel/assets/trash-bin.svg' %}" width="20" height="12"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const BUS_ICON_URL = "{% static 'AdminPanel/assets/bus-stop-pointer.svg' %}";
+    const MOVING_BUS_ICON_URL = "{% static 'AdminPanel/assets/bus.svg' %}"
+    var marker,coords;
+    const csrftoken = document.querySelector(
+        'meta[name="csrf-token"]'
+    ).content;
+    const stopIcon = L.icon({
+        iconUrl:BUS_ICON_URL,
+        iconSize:[22,22],
+        iconAnchor:[11,22],
+        popupAnchor:[0,-22]
+    })
+    const busIcon = L.icon({
+        iconUrl:MOVING_BUS_ICON_URL,
+        iconSize:[22,22],
+        iconAnchor:[11,22],
+        popupAnchor:[0,-22]
+    })
+    const map = L.map('map').setView([11.7590518, 76.0047251], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+
+    const routingControl = L.Routing.control({
+        waypoints: [],
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+
+        createMarker: function(i,wp,n){
+            const stopMarker = L.marker(wp.latLng,{icon:stopIcon});
+            const waypoints = routingControl.getWaypoints();
+            stopMarker.on('click',e=>{
+                const index = waypoints.findIndex(w =>
+                    w.latLng && w.latLng.equals(wp.latLng)
+                );
+            })
+            return stopMarker;
+        }
+    }).addTo(map);
+    
+    const busName = document.getElementById("busName");
+    const routeName = document.getElementById("routeName");
+    const from = document.getElementById("from");
+    const to = document.getElementById("to");
+    const addButton = document.getElementById("add-btn");
+    const deleteButton = document.getElementById("delete-route-btn");
+    const clearButton = document.getElementById("clear-route-btn");
+    const to1 = document.getElementById("to1");
+    const to2 = document.getElementById("to2");
+    const to3 = document.getElementById("to3");
+    const to4 = document.getElementById("to4");
+    const to5 = document.getElementById("to5");
+    const to6 = document.getElementById("to6");
+    const rt1 = document.getElementById("rt1");
+    const rt2 = document.getElementById("rt2");
+    const rt3 = document.getElementById("rt3");
+    const rt4 = document.getElementById("rt4");
+    const rt5 = document.getElementById("rt5");
+    const rt6 = document.getElementById("rt6");
+    addButton.addEventListener("click",(e)=>{
+        
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"route_verification",
+                route_name:routeName.value,
+            })
+        }).then(res=> res.json())
+        .then(data=>{
+            const errLabel = document.getElementById("no-matching-route-err");
+            if(data.search_success){
+                errLabel.style.display = "none"
+                let route=[];
+                const stopsData = data.stops;
+                stopsData.forEach(e => {
+                    route.push(L.latLng(e.lat,e.lng));
+                });
+                routingControl.setWaypoints(route)
+                let formData = JSON.stringify({
+                    bus_name:busName.value,
+                    route_name:routeName.value,
+                    from:from.value,
+                    to:to.value,
+                    to1:to1.value,
+                    to2:to2.value,
+                    to3:to3.value,
+                    to4:to4.value,
+                    to5:to5.value,
+                    to6:to6.value,
+                    rt1:rt1.value,
+                    rt2:rt2.value,
+                    rt3:rt3.value,
+                    rt4:rt4.value,
+                    rt5:rt5.value,
+                    rt6:rt6.value,
+                })
+                fetch("/add_buses/",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type": "application/json",
+                        "X-CSRFToken":csrftoken
+                    },
+                    body: JSON.stringify({
+                        action:"save_bus",
+                        bus_data:formData,
+                    })
+                })
+            }else{
+                errLabel.style.display = "block"
+            }
+        })
+    })
+
+    
+
+    busName.addEventListener("input",e=>{
+        let enterdName = e.target.value;
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"search_bus",
+                bus_name:enterdName,
+            })
+        }).then(res=>res.json())
+        .then(data=>{
+            if(data.search_success){
+                routeName.value = data.route_name;
+                to.value = data.to;
+                from.value=data.from;
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = data.takeoffs[ind];
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = data.returns[ind];
+                });
+                fetch("/add_buses/",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type": "application/json",
+                        "X-CSRFToken":csrftoken
+                    },
+                    body: JSON.stringify({
+                        action:"route_verification",
+                        route_name:routeName.value,
+                    })
+                }).then(res=> res.json())
+                .then(data=>{
+                    let route=[];
+                    const stopsData = data.stops;
+                    stopsData.forEach(e => {
+                        route.push(L.latLng(e.lat,e.lng));
+                    });
+                    routingControl.setWaypoints(route)
+                })
+            }else{
+                routeName.value = "";
+                to.value = "";
+                from.value= "";
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                routingControl.setWaypoints([])
+            }
+        })
+        
+    })
+    deleteButton.addEventListener("click",e=>{
+        fetch("/add_buses/",{
+            method:"POST",
+            headers:{
+                "Content-Type": "application/json",
+                "X-CSRFToken":csrftoken
+            },
+            body: JSON.stringify({
+                action:"delete_bus",
+                bus_name:busName.value,
+            })
+        }).then(res=>res.json())
+        .then(data=>{
+            if(data.delete_success){
+                busName.value=""
+                routeName.value = "";
+                to.value = "";
+                from.value= "";
+                const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+                const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+                takeOffInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                returnInputs.forEach((el,ind)=> {
+                    el.value = "";
+                });
+                routingControl.setWaypoints([])
+            }else{
+                console.log("delte fail")
+            }
+        })
+    })
+    clearButton.addEventListener("click",e=>{
+        busName.value=""
+        routeName.value = "";
+        to.value = "";
+        from.value= "";
+        const takeOffInputs = [to1,to2,to3,to4,to5,to6];
+        const returnInputs = [rt1,rt2,rt3,rt4,rt5,rt6]
+        takeOffInputs.forEach((el,ind)=> {
+            el.value = "";
+        });
+        returnInputs.forEach((el,ind)=> {
+            el.value = "";
+        });
+        routingControl.setWaypoints([])
+    })
+    
+</script>
+
+</body>
+</html>

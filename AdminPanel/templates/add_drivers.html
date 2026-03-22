@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Add Driver</title>
+<style>
+/* Reset & basic styles */
+html,body{
+    margin:0;
+    height:100%;
+    font-family:system-ui;
+    background:#f5f5f5;
+    color:#222;
+}
+
+/* Navbar */
+.navbar{
+    height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px;
+    border-bottom:1px solid #e5e5e5;
+    background:#fff;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+}
+
+.nav-left{
+    font-weight:600;
+    font-size:15px;
+}
+
+.nav-right a{
+    margin-left:24px;
+    text-decoration:none;
+    font-size:14px;
+    color:#444;
+}
+
+#curr_page{
+    color:#c92828;
+}
+
+/* Centered form */
+.main-container{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:calc(100% - 56px);
+    padding:16px;
+}
+
+/* Form card */
+.form-container{
+    background:#fff;
+    padding:32px;
+    border-radius:12px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.1);
+    width:360px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+/* Field styles */
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.field label{
+    font-size:14px;
+    color:#555;
+    font-weight:500;
+}
+
+.field input{
+    padding:10px 12px;
+    font-size:14px;
+    border:1px solid #d0d0d0;
+    border-radius:8px;
+    outline:none;
+    transition:0.2s;
+    background:#fafafa;
+}
+
+.field input:focus{
+    border-color:#c92828;
+    box-shadow:0 0 0 2px rgba(201,40,40,0.1);
+    background:#fff;
+}
+
+/* Passkey random button */
+.passkey-div{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.passkey-div .btn{
+    flex-shrink:0;
+}
+
+/* Save button */
+.btn{
+    padding:12px;
+    font-size:15px;
+    background:#c92828;
+    border:none;
+    border-radius:8px;
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.btn:hover{
+    background:#a21f1f;
+}
+
+/* Randomize small button */
+.btn-small{
+    padding:8px 12px;
+    font-size:13px;
+    background:#fff;
+    border:1px solid #d0d0d0;
+    border-radius:6px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.btn-small:hover{
+    background:#f2f2f2;
+}
+
+/* Responsive */
+@media(max-width:400px){
+    .form-container{
+        width:100%;
+        padding:24px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="nav-left">AdminPanel</div>
+    <div class="nav-right">
+        <a href="#" id="curr_page">Add Drivers</a>
+        <a href="{% url 'view_drivers' %}">Edit Drivers</a>
+        <a href="{% url 'add_routes' %}">Add Routes</a>
+        <a href="{% url 'add_buses' %}">Add Buses</a>
+        <a href="{% url 'edit_stops' %}">Edit Stops</a>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="form-container">
+        <div class="field">
+            <label>Name</label>
+            <input id="name" placeholder="Driver Name">
+        </div>
+        <div class="field">
+            <label>Mobile Number</label>
+            <input id="mobile" placeholder="Mobile No">
+        </div>
+        <div class="field">
+            <label>Place</label>
+            <input id="place" placeholder="Driver Location">
+        </div>
+        <div class="field">
+            <label>Passkey</label>
+            <div class="passkey-div">
+                <input id="passkey" placeholder="Random or custom">
+                <button class="btn-small" id="random">Randomize</button>
+            </div>
+        </div>
+        <button class="btn" id="save">Add Driver</button>
+    </div>
+</div>
+
+<script>
+let nameInput = document.getElementById("name");
+let mobile = document.getElementById("mobile");
+let place = document.getElementById("place");
+let passkey = document.getElementById("passkey");
+
+// Random Passkey
+document.getElementById("random").onclick = function(){
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "";
+    for(let i=0;i<12;i++){
+        key += chars.charAt(Math.floor(Math.random()*chars.length));
+    }
+    passkey.value = key;
+}
+
+// Save Driver
+document.getElementById("save").onclick = async function(){
+    if(!nameInput.value || !mobile.value || !place.value || !passkey.value){
+        alert("Please fill all fields");
+        return;
+    }
+    await fetch("/add_drivers/",{
+        method:"POST",
+        body:JSON.stringify({
+            action:"save_driver",
+            name: nameInput.value,
+            mobile_no:mobile.value,
+            place:place.value,
+            passkey:passkey.value
+        })
+    });
+    nameInput.value = "";
+    mobile.value = "";
+    place.value = "";
+    passkey.value = "";
+}
+</script>
+
+</body>
+</html>

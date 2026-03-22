@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Assign Driver</title>
+<style>
+body, html {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f5f7;
+    color: #333;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px;
+}
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+}
+.nav-left { font-weight: 600; font-size: 17px; color: #c92828; }
+.nav-right a { margin-left: 20px; text-decoration: none; color: #555; font-size: 14px; }
+#curr_page { font-weight: 600; }
+/* Sections */
+.section {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 5px;
+}
+/* Fields */
+.field { display: flex; flex-direction: column; margin-bottom: 15px; }
+.field label { font-size: 14px; font-weight: 500; margin-bottom: 5px; color: #555; }
+.field input { padding: 10px 14px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+.field input:focus { border-color: #c92828; }
+.inline-field { display: flex; gap: 10px; align-items: center; }
+.inline-field input { flex: 1; }
+/* Buttons */
+.btn-primary { padding: 10px 18px; background: #c92828; color: #fff; border: none; border-radius: 5px; font-weight: 600; cursor: pointer; }
+.btn-primary:hover { background: #a21f1f; }
+.btn-small { padding: 6px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 5px; background: #fff; cursor: pointer; }
+.btn-small:hover { background: #f2f2f2; }
+.btn-delete { padding: 6px 12px; font-size: 13px; background: #f44336; color: #fff; border-radius: 5px; cursor: pointer; }
+.btn-delete:hover { background: #d32f2f; }
+/* Table */
+.table-container { overflow-x: auto; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+th { font-weight: 600; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="nav-left">AdminPanel</div>
+    <div class="nav-right">
+        <a href="{% url 'view_drivers' %}">Edit Drivers</a>
+    </div>
+</div>
+
+<div class="container">
+
+    {% if driver %}
+        <!-- Driver Details -->
+        <div class="section">Driver Details</div>
+        <div class="field">
+            <label>Name</label>
+            <input type="text" value="{{ driver.name }}" readonly>
+        </div>
+        <div class="field">
+            <label>Phone</label>
+            <input type="text" value="{{ driver.phone_no }}" readonly>
+        </div>
+        <div class="field">
+            <label>Place</label>
+            <input type="text" value="{{ driver.place }}" readonly>
+        </div>
+        <div class="field">
+            <label>Passkey</label>
+            <div class="inline-field">
+                <input type="text" id="passkey_input" value="{{ driver.passkey }}">
+                <button type="button" class="btn-small" onclick="regeneratePasskey()">Regenerate</button>
+                <button type="button" class="btn-small" onclick="savePasskey()">Save</button>
+            </div>
+        </div>
+
+        <!-- Assign New Bus -->
+        <div class="section">Assign New Bus</div>
+        <div class="inline-field" style="margin-bottom:12px;">
+            <input type="text" id="new_bus_name" placeholder="Enter bus name" style="flex:2;">
+            <button type="button" class="btn-primary" onclick="assignBus()">Assign Bus</button>
+        </div>
+
+        <!-- Assigned Buses Table -->
+        <div class="section">Assigned Buses</div>
+        <div class="table-container">
+            <table id="assigned_buses_table">
+                <thead>
+                    <tr>
+                        <th>Bus Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bus in assigned_buses %}
+                    <tr>
+                        <td>{{ bus.bus_name }}</td>
+                        <td>
+                            <button class="btn-delete btn-small" onclick="deleteBus('{{ bus.bus_name }}')">Delete</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="text-align:center; color:#888;">No buses assigned yet</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="color:#888;">Driver not found. Please provide a valid phone number.</p>
+    {% endif %}
+
+</div>
+
+<script>
+function regeneratePasskey() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "";
+    for (let i = 0; i < 8; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById("passkey_input").value = key;
+
+    
+}
+
+function savePasskey() {
+    const key = document.getElementById("passkey_input").value;
+    fetch(window.location.href, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ passkey: key })
+    });
+}
+
+function assignBus() {
+    const busName = document.getElementById("new_bus_name").value.trim();
+    if (!busName) return;
+    fetch(window.location.href, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ bus_name: busName })
+    }).then(() => {
+        document.getElementById("new_bus_name").value = "";
+        fetchAssignedBuses();
+        window.location.reload();
+    });
+}
+
+function deleteBus(busName) {
+    fetch(window.location.href, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ delete_bus_name: busName })
+    }).then(() => fetchAssignedBuses()).
+    then(data=>{
+        window.location.reload();
+    });
+}
+
+function fetchAssignedBuses() {
+    fetch(window.location.href + "?fetch_buses=1")
+        .then(res => res.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const tbody = doc.querySelector("#assigned_buses_table tbody");
+            document.querySelector("#assigned_buses_table tbody").innerHTML = tbody.innerHTML;
+        });
+}
+</script>
+</body>
+</html>
