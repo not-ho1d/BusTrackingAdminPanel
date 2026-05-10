@@ -47,6 +47,10 @@ html,body{
 .driver-table th{ background:#f9f9f9; font-weight:600; }
 .driver-table tr:hover{ background:#fafafa; cursor:pointer; }
 @media(max-width:600px){ .search-container{ flex-direction:column; } }
+.navbar {
+    position: relative;
+    z-index: 9999;
+}
 </style>
 </head>
 <body>
@@ -56,8 +60,9 @@ html,body{
     <div class="nav-right">
         <a href="{% url 'add_drivers' %}">Add Drivers</a>
         <a href="#" id="curr_page">Edit Drivers</a>
-        <a href="{% url 'add_routes' %}">Add Routes</a>
-        <a href="{% url 'add_buses' %}">Add Buses</a>
+        <a href="{% url 'busdetails' %}">Bus Details</a>
+        <a href="{% url 'add_routes' %}">Edit Routes</a>
+        <a href="{% url 'add_buses' %}">Edit Buses</a>
         <a href="{% url 'edit_stops' %}">Edit Stops</a>
     </div>
 </div>

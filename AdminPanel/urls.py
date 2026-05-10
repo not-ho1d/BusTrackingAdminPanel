@@ -10,4 +10,5 @@ urlpatterns = [
     path("view_drivers/", views.view_drivers_page, name="view_drivers"),
     path("view_drivers/data/", views.view_drivers_data, name="view_drivers_data"),
     path("assign_driver/", views.assign_driver, name="assign_driver"),
+    path("busdetails/", views.busdetails, name="busdetails"),
 ]

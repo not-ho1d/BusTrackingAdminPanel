@@ -25,6 +25,8 @@
             padding: 0 24px;
             border-bottom: 1px solid #e5e5e5;
             background: #fff;
+            position: relative;
+            z-index: 9999;
         }
 
         .nav-left {
@@ -54,6 +56,7 @@
 
         .side-section {
             width: 30%;
+            height: 120%;
             background: #f7f7f7;
             border-left: 1px solid #e5e5e5;
             padding: 24px;
@@ -65,7 +68,7 @@
 
         #map {
             width: 100%;
-            height: 100%;
+            height: 120%;
         }
 
         .field {
@@ -144,6 +147,7 @@
             justify-content: space-evenly;
             gap: 9%;
         }
+        
     </style>
 </head>
 <body>
@@ -153,8 +157,9 @@
     <div class="nav-right">
         <a href="{% url 'add_drivers' %}" >Add Drivers</a>
         <a href="{% url 'view_drivers' %}">Edit Drivers</a>
-        <a href="{% url 'add_routes' %}">Add Routes</a>
-        <a href="{% url 'add_buses' %}" id="curr_page">Add Buses</a>
+        <a href="{% url 'busdetails' %}">Bus Details</a>
+        <a href="{% url 'add_routes' %}">Edit Routes</a>
+        <a href="{% url 'add_buses' %}" id="curr_page">Edit Buses</a>
         <a href="{% url 'edit_stops' %}">Edit Stops</a>
     </div>
 </div>
@@ -169,7 +174,10 @@
     <div class="side-section">
         <div class="field">
             <label for="routeName">Bus Name</label>
-            <input type="text" id="busName" placeholder="Enter Bus name">
+            <div style="display: flex;flex-direction: row;gap: 10px;">
+                <input type="text" id="busName" placeholder="Enter Bus name" style="width: 100%;">
+                <button class="add-route-btn" id="search-btn"><img src="{% static 'AdminPanel/assets/search.svg' %}" width="20" height="12"></button>
+            </div>
         </div>
         <div class="field">
             <label for="routeName">From</label>
@@ -247,8 +255,10 @@
         popupAnchor:[0,-22]
     })
     const map = L.map('map').setView([11.7590518, 76.0047251], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+    //L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap France'
+    }).addTo(map);
 
     const routingControl = L.Routing.control({
         waypoints: [],
@@ -276,6 +286,7 @@
     const addButton = document.getElementById("add-btn");
     const deleteButton = document.getElementById("delete-route-btn");
     const clearButton = document.getElementById("clear-route-btn");
+    const searchButton = document.getElementById("search-btn")
     const to1 = document.getElementById("to1");
     const to2 = document.getElementById("to2");
     const to3 = document.getElementById("to3");
@@ -348,8 +359,8 @@
 
     
 
-    busName.addEventListener("input",e=>{
-        let enterdName = e.target.value;
+    searchButton.addEventListener("click",e=>{
+        let enterdName = busName.value;
         fetch("/add_buses/",{
             method:"POST",
             headers:{
@@ -461,4 +472,4 @@
 </script>
 
 </body>
-</html>
+</htEdit

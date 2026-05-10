@@ -77,10 +77,10 @@ def returnTimeTable(bus_name,time):
 
 
 class Time:
-    def __init__(self):
-        self.hrs = "06"
-        self.min = "45"
-        self.sec = "30"
+    def __init__(self,h,m,s):
+        self.hrs = h #"06"
+        self.min = m#"45"
+        self.sec = s#"30"
         self.running = False
     def start(self,clockUpdateTime):
         print("clock started")
@@ -114,7 +114,8 @@ class Command(BaseCommand):
             conf = json.loads(file.read())
         clockUpdateTime = conf["clock_update_time"]
         dbReloadTime = conf["db_reload_time"]
-        clock = Time()
+        h, m, s = conf["speed"].split(":")
+        clock = Time(h,m,s)
         clock.start(clockUpdateTime=clockUpdateTime)
         buses = Bus.objects.all()
         tt_data = {}
@@ -248,7 +249,7 @@ class Command(BaseCommand):
                                     continue
                                 bl_data.next_stop = next_stop
                                 bl_data.stop_change_time_indicator = wu_cpy.loaded_timetable[next_stop]
-                                print("current_stop: ",bl_data.current_stop, "new next_stop",bl_data.stop_change_time_indicator)
+                                print("current bus: ",bl_data.bus_name,"current_stop: ",bl_data.current_stop, "new next_stop",bl_data.stop_change_time_indicator)
                                 print(wu_cpy.loaded_timetable)
                                 bl_data.speed = 0
                                 #bl_data.save()
@@ -264,6 +265,8 @@ class Command(BaseCommand):
                                     loaded_tt = wu_check.loaded_timetable
                                     start_time = loaded_tt[bl_data.current_stop]
                                     end_time = loaded_tt[bl_data.next_stop]
+                                    #if bl_data.bus_name == "testbus":
+                                    #print("this ---", curr_bus_route_coords,"\n",bl_data.stop_index)     
                                     bl_data.route_coords = curr_bus_route_coords[bl_data.stop_index]
                                     bl_data.route_coords = bl_data.route_coords["coords"]
                                     if bl_data.prev_stop_index > -1:

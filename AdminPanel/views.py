@@ -35,11 +35,95 @@ def getTime():
         except Exception as e:
             print(e)
             return "00:00"
-# Create your views here.
+        
+
+
+#-----------------Views----------------------        
+def busdetails(request):
+
+    results = []
+    added_buses = set()
+
+    # first add buses from queue
+    for qd in reversed(update_queue):
+
+        if type(qd) == Bus:
+
+            # skip duplicate queue buses
+            if qd.bus_name in added_buses:
+                continue
+
+            added_buses.add(qd.bus_name)
+
+            results.append({
+                "bus_name": qd.bus_name,
+                "route_name": qd.route_name,
+                "state": "on queue"
+            })
+
+    # then add buses from Bus table that are not already added
+    for bus in Bus.objects.all():
+
+        if bus.bus_name in added_buses:
+            continue
+
+        location = BusLocation.objects.filter(
+            bus_name=bus.bus_name
+        ).first()
+
+        if location:
+            state = location.state
+        else:
+            state = "inactive"
+
+        results.append({
+            "bus_name": bus.bus_name,
+            "route_name": bus.route_name,
+            "state": state
+        })
+
+    if request.method == "POST":
+
+        data = json.loads(request.body)
+
+        if data["action"] == "search":
+
+            filtered = []
+
+            for bus in results:
+
+                if data["bus_name"].lower() in bus["bus_name"].lower():
+                    filtered.append(bus)
+
+            return JsonResponse({
+                "results": filtered
+            })
+
+        return JsonResponse({
+            "results": results
+        })
+
+    return render(request, "busdetails.html", {"buses": results})
+
 def AddRoutes(request):
     context = {}
     routes = Routes.objects.all()
-    if routes:
+    RouteQueue = False
+
+    delete_queue_routes = []
+    added_routes = set()
+
+    for qd in reversed(delete_queue):
+        if type(qd) == Routes:
+            if qd.route_name in added_routes:
+                continue
+            added_routes.add(qd.route_name)
+            delete_queue_routes.append(qd.route_name)
+
+    for qd in reversed(update_queue):
+        if(type(qd) == Routes):
+            RouteQueue = True
+    if routes or RouteQueue:
         allRoutes = []
         allRouteNames = []
         for r in routes:
@@ -61,7 +145,9 @@ def AddRoutes(request):
                     allRoutes.append(routeData)
         allRouteNames = []
         context["routes"] = allRoutes
+        context["deleted_routes"] = delete_queue_routes
 
+    
     if request.method == "POST":
         data = json.loads(request.body)
         action = data["action"]
@@ -86,23 +172,50 @@ def AddRoutes(request):
                 )
                 #r.save()
                 update_queue.append(r)
+        elif action == "undo":
+            print(routeName)
+            for qd in reversed(delete_queue):
+                print("qd: ",qd.route_name)
+                if type(qd) == Routes:
+                    if qd.route_name == routeName:
+                        delete_queue.remove(qd)
         else:
-            r= Routes.objects.get(route_name=routeName)
-            for stops in r.stopsData:
-                print(stops["name"])
-                s =Stops.objects.filter(stop_name = stops["name"])
-                for rs in s:
-                    if routeName in rs.parent_routes:
-                        rs.parent_routes.remove(routeName)
-                        update_queue.append(rs)
-                update_queue.append(r)
-                #s.save()
-            buses = Bus.objects.filter(route_name = r.route_name)
-            for bus in buses:
-                #bus.delete()
-                delete_queue.append(bus)
-            delete_queue.append(r)
-            #r.delete()
+            try:
+
+                r = Routes.objects.get(route_name=routeName)
+
+                for stops in r.stopsData:
+                    print(stops["name"])
+
+                    s = Stops.objects.filter(stop_name=stops["name"])
+
+                    for rs in s:
+                        if routeName in rs.parent_routes:
+                            rs.parent_routes.remove(routeName)
+                            update_queue.append(rs)
+
+                    update_queue.append(r)
+
+                buses = Bus.objects.filter(route_name=r.route_name)
+
+                for bus in buses:
+                    delete_queue.append(bus)
+
+                delete_queue.append(r)
+
+            except Routes.DoesNotExist:
+
+                update_queue[:] = [
+                    qd for qd in update_queue
+                    if not (
+                        (type(qd) == Routes and qd.route_name == routeName)
+                        or
+                        (type(qd) == Bus and qd.route_name == routeName)
+                    )
+                ]
+
+                
+                    
     return render(request,"add_routes.html",context=context)
 
 def EditStops(request):
@@ -180,6 +293,13 @@ def AddBuses(request):
                     "stops":r.stopsData
                 })
             except Routes.DoesNotExist:
+                for qd in reversed(update_queue):
+                    if(type(qd) == Routes):
+                        if(qd.route_name == data["route_name"]):
+                            return JsonResponse({
+                                "search_success":True,
+                                "stops":qd.stopsData
+                            })
                 return JsonResponse({
                     "search_success":False
                 })
@@ -203,39 +323,78 @@ def AddBuses(request):
                 returns = returns,
             )
             #timetable making
-            r = Routes.objects.get(route_name=busData["route_name"])
-            stop_data = r.stopsData
-            no_of_takeoffs = b.take_offs_len()
-            timetable = {}
-            for x,y in zip(takeOffs[:no_of_takeoffs],returns[:no_of_takeoffs]):
-                stx = x
-                init_ind = stx
-                takeoff_tt = {}
-                return_tt = {}
-                for ind,sd in enumerate(stop_data):
-                    if(ind<len(stop_data)):
-                        if(ind==0):
-                            stx=x
+            try:
+                r = Routes.objects.get(route_name=busData["route_name"])
+                stop_data = r.stopsData
+                no_of_takeoffs = b.take_offs_len()
+                timetable = {}
+                for x,y in zip(takeOffs[:no_of_takeoffs],returns[:no_of_takeoffs]):
+                    stx = x
+                    init_ind = stx
+                    takeoff_tt = {}
+                    return_tt = {}
+                    for ind,sd in enumerate(stop_data):
+                        if(ind<len(stop_data)):
+                            if(ind==0):
+                                stx=x
+                            else:
+                                stx=timeaddition(stx,stop_data[ind]["tfps"])
+                            #print("stx: ",stx," tfps :",stop_data[ind+1]["tfps"])
+                            takeoff_tt[sd["name"]]=stx
+                    sty = y
+                    stop_data_rev= list(reversed(stop_data))
+                    for ind,sd in enumerate(stop_data_rev):
+                        if ind==0:
+                            return_tt[sd["name"]]=sty
                         else:
-                            stx=timeaddition(stx,stop_data[ind]["tfps"])
-                        #print("stx: ",stx," tfps :",stop_data[ind+1]["tfps"])
-                        takeoff_tt[sd["name"]]=stx
-                sty = y
-                stop_data_rev= list(reversed(stop_data))
-                for ind,sd in enumerate(stop_data_rev):
-                    if ind==0:
-                        return_tt[sd["name"]]=sty
-                    else:
-                        sty=timeaddition(sty,stop_data_rev[ind-1]["tfps"])
-                        return_tt[sd["name"]]=sty
-                timetable[x] = takeoff_tt
-                timetable[y] = return_tt
-                #print(takeoff_tt)
-                #print(return_tt)
-            print(timetable)
-            b.timetable = timetable
-            #b.save()
-            update_queue.append(b)
+                            sty=timeaddition(sty,stop_data_rev[ind-1]["tfps"])
+                            return_tt[sd["name"]]=sty
+                    timetable[x] = takeoff_tt
+                    timetable[y] = return_tt
+                    #print(takeoff_tt)
+                    #print(return_tt)
+                print(timetable)
+                b.timetable = timetable
+                #b.save()
+                update_queue.append(b)
+            except Routes.DoesNotExist:
+                for qd in reversed(update_queue):
+                    if(type(qd) == Routes):
+                        if(qd.route_name == busData["route_name"]):
+                            r=qd
+                            stop_data = r.stopsData
+                            no_of_takeoffs = b.take_offs_len()
+                            timetable = {}
+                            for x,y in zip(takeOffs[:no_of_takeoffs],returns[:no_of_takeoffs]):
+                                stx = x
+                                init_ind = stx
+                                takeoff_tt = {}
+                                return_tt = {}
+                                for ind,sd in enumerate(stop_data):
+                                    if(ind<len(stop_data)):
+                                        if(ind==0):
+                                            stx=x
+                                        else:
+                                            stx=timeaddition(stx,stop_data[ind]["tfps"])
+                                        #print("stx: ",stx," tfps :",stop_data[ind+1]["tfps"])
+                                        takeoff_tt[sd["name"]]=stx
+                                sty = y
+                                stop_data_rev= list(reversed(stop_data))
+                                for ind,sd in enumerate(stop_data_rev):
+                                    if ind==0:
+                                        return_tt[sd["name"]]=sty
+                                    else:
+                                        sty=timeaddition(sty,stop_data_rev[ind-1]["tfps"])
+                                        return_tt[sd["name"]]=sty
+                                timetable[x] = takeoff_tt
+                                timetable[y] = return_tt
+                                #print(takeoff_tt)
+                                #print(return_tt)
+                            print(timetable)
+                            b.timetable = timetable
+                            #b.save()
+                            update_queue.append(b)
+                
         elif data["action"] == "search_bus":
             for qd in reversed(update_queue):
                 if(type(qd) == Bus):

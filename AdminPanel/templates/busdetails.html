@@ -1,0 +1,195 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bus Details</title>
+
+    <style>
+        html, body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #222;
+        }
+
+        .navbar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fff;
+        }
+
+        .nav-left {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-right a {
+            margin-left: 24px;
+            text-decoration: none;
+            font-size: 14px;
+            color: #444;
+        }
+
+        #curr_page {
+            color: #c92828;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-bar input {
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            width: 250px;
+        }
+
+        .search-bar button {
+            padding: 8px 16px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .search-bar button:hover {
+            background: #f2f2f2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        th {
+            background: #f7f7f7;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="nav-left">AdminPanel</div>
+    <div class="nav-right">
+        <a href="{% url 'add_drivers' %}">Add Drivers</a>
+        <a href="{% url 'view_drivers' %}">Edit Drivers</a>
+        <a href="#" id="curr_page">Bus Details</a>
+        <a href="{% url 'add_routes' %}">Edit Routes</a>
+        <a href="{% url 'add_buses' %}">Edit Buses</a>
+        <a href="{% url 'edit_stops' %}">Edit Stops</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search Bus Name">
+        <button onclick="searchBus()">Search</button>
+        <button onclick="loadAll()">Clear</button>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>Bus Name</th>
+                <th>Route Name</th>
+                <th>State</th>
+            </tr>
+        </thead>
+        <tbody id="busTable">
+            {% for bus in buses %}
+            <tr>
+                <td>{{ bus.bus_name }}</td>
+                <td>{{ bus.route_name }}</td>
+                <td>{{ bus.state }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+<script>
+function searchBus(){
+    const query = document.getElementById("searchInput").value;
+
+    fetch("/busdetails/",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "X-CSRFToken":"{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            action:"search",
+            bus_name:query
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        renderTable(data.results);
+    });
+}
+
+function loadAll(){
+    fetch("/busdetails/",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "X-CSRFToken":"{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            action:"all"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        renderTable(data.results);
+        document.getElementById("searchInput").value="";
+    });
+}
+
+function renderTable(data){
+    const table = document.getElementById("busTable");
+    table.innerHTML = "";
+
+    data.forEach(bus=>{
+        table.innerHTML += `
+            <tr>
+                <td>${bus.bus_name}</td>
+                <td>${bus.route_name}</td>
+                <td>${bus.state}</td>
+            </tr>
+        `;
+    });
+}
+</script>
+
+</body>
+</html>

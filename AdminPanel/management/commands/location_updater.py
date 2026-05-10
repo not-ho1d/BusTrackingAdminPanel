@@ -22,7 +22,7 @@ def is_within_50m(coord_lat, coord_lng, end_lat, end_lng):
 
     distance = R * c
 
-    return distance <= 15
+    return distance <= 30
 
 class Command(BaseCommand):
     def handle(self,*args, **kwargs):
@@ -30,7 +30,6 @@ class Command(BaseCommand):
         for route in routes:
             coords = route.route_coords
             stop_coords = route.stopsData
-            print(len(stop_coords))
             routing_coords = []
             stop_to_stop_final_coords = []
             for i,coord in enumerate(stop_coords):
@@ -43,26 +42,34 @@ class Command(BaseCommand):
                         "end_lng":str(stop_coords[i+1]['lng'])[:7]
                     }
                     routing_coords.append(coord_data)
+                    print("rc",routing_coords)
+            print("routing coords: ",routing_coords)
             for data in routing_coords:
                 print("data",data)
                 res = []
                 for coord in coords:
+                    
                     result = is_within_50m(coord['lat'], coord['lng'], data['end_lat'], data['end_lng'])
 
                     res.append({
                         "lat": coord['lat'],
                         "lng": coord['lng']
                     })
+                    if(data['name'] == "a-b"):
+                        print(result)
 
                     if result:
                         stop_to_stop_route = {"name":data["name"],"coords":res}
+                        print("result ;;;;; ",stop_to_stop_route)
 
                         if(len(stop_to_stop_route["coords"])>1):
+                            print("added ",stop_to_stop_route['name'])
                             stop_to_stop_final_coords.append(stop_to_stop_route)
 
                         res=[]
+            #print("final- ",stop_to_stop_final_coords)
             route.stop_to_stop_coords = list(stop_to_stop_final_coords)
+            print(route.stop_to_stop_coords)
             route.save()
 
-        r = Routes.objects.get(route_name = "mananthavady-niravilpuzha")
-        print(r.stop_to_stop_coords)
+        

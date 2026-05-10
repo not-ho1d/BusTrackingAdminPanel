@@ -144,6 +144,10 @@
             justify-content: space-evenly;
             gap: 9%;
         }
+        .navbar {
+            position: relative;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
@@ -153,8 +157,9 @@
     <div class="nav-right">
         <a href="{% url 'add_drivers' %}" >Add Drivers</a>
         <a href="{% url 'view_drivers' %}">Edit Drivers</a>
-        <a href="{% url 'add_routes' %}">Add Routes</a>
-        <a href="{% url 'add_buses' %}">Add Buses</a>
+        <a href="{% url 'busdetails' %}">Bus Details</a>
+        <a href="{% url 'add_routes' %}">Edit Routes</a>
+        <a href="{% url 'add_buses' %}">Edit Buses</a>
         <a href="{% url 'edit_stops' %}" id="curr_page">Edit Stops</a>
     </div>
 </div>
@@ -230,8 +235,10 @@
         popupAnchor:[0,-22]
     })
     const map = L.map('map').setView([11.7590518, 76.0047251], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+    //L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap France'
+    }).addTo(map);
     const routingControl = L.Routing.control({
         waypoints: [],
         addWaypoints: false,

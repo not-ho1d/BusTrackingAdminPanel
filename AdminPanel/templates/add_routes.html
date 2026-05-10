@@ -138,6 +138,10 @@
             justify-content: space-evenly;
             gap: 9%;
         }
+        .navbar {
+            position: relative;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
@@ -147,8 +151,9 @@
     <div class="nav-right">
         <a href="{% url 'add_drivers' %}" >Add Drivers</a>
         <a href="{% url 'view_drivers' %}">Edit Drivers</a>
-        <a href="#" id="curr_page">Add Routes</a>
-        <a href="{% url 'add_buses' %}">Add Buses</a>
+        <a href="{% url 'busdetails' %}">Bus Details</a>
+        <a href="#" id="curr_page">Edit Routes</a>
+        <a href="{% url 'add_buses' %}">Edit Buses</a>
         <a href="{% url 'edit_stops' %}">Edit Stops</a>
     </div>
 </div>
@@ -172,8 +177,36 @@
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;user-select: none;">
             <label>View Routes</label>
+        
             {% for r in routes %}
-            <a class="route-names" data-route_name="{{r.route_name}}" data-route="{{r.route_data}}">{{ r.route_name }}</a>
+            <div style="display:flex; align-items:center; gap:6px;">
+                
+                <a 
+                    class="route-names" 
+                    data-route_name="{{r.route_name}}" 
+                    data-route="{{r.route_data}}"
+                    {% if r.route_name in deleted_routes %}
+                        style="color:red;"
+                    {% endif %}
+                >
+                {{ r.route_name }}
+                </a>
+        
+                {% if r.route_name in deleted_routes %}
+                <img 
+                    id="undo-route-{{ forloop.counter }}"
+                    class="undo-route-btn"
+                    src="{% static 'AdminPanel/assets/undo.svg' %}" 
+                    width="20" 
+                    height="12"
+                    style="
+                        cursor:pointer;
+                        filter: brightness(0) saturate(100%) invert(16%) sepia(91%) saturate(7484%) hue-rotate(1deg) brightness(97%) contrast(118%);
+                    "
+                >
+                {% endif %}
+        
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -188,8 +221,9 @@
     const clearRouteButton = document.getElementById("clear-route-btn");
     const deleteRouteButton = document.getElementById("delete-route-btn");
     const map = L.map('map').setView([11.7590518, 76.0047251], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap France'
+}).addTo(map);
     const busIcon = L.icon({
         iconUrl:BUS_ICON_URL,
         iconSize:[22,22],
@@ -203,7 +237,7 @@
         waypoints: [],
         addWaypoints: false,
         draggableWaypoints: false,
-        fitSelectedRoutes: true,
+        fitSelectedRoutes: false,
         show: false,
 
         createMarker: function(i,wp,n){
@@ -225,6 +259,7 @@
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
         clickedPoints.push(L.latLng(lat,lng));
+        routingControl.options.fitSelectedRoutes = false
         routingControl.setWaypoints(clickedPoints)
     })
 
@@ -293,11 +328,32 @@
         el.addEventListener("click",(e)=>{
             const route = JSON.parse(el.dataset.route);
             clickedPoints = route;
+            routingControl.options.fitSelectedRoutes = true
             routingControl.setWaypoints(clickedPoints);
 
             const routeNameInp = document.getElementById("routeName");
             routeNameInp.value = el.dataset.route_name;
         })
+    });
+
+    document.querySelectorAll(".undo-route-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+
+            const routeEl = btn.parentElement.querySelector(".route-names");
+
+            fetch("/add_routes/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrftoken
+                },
+                body: JSON.stringify({
+                    action: "undo",
+                    route_name: routeEl.dataset.route_name
+                })
+            }).then(res => location.reload());
+
+        });
     });
 </script>
 
